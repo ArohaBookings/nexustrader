@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from src.apex_telegram import ApexTelegramError, client_from_env, telegram_config_from_mapping
 from src.config_loader import load_settings
+from src.env_loader import load_env_files
 from src.live_readiness import (
     build_live_readiness_report,
     collect_bridge_health,
@@ -100,6 +101,7 @@ def _ea_bridge_mode() -> bool:
 def main() -> int:
     _ensure_user_tool_paths()
     args = _parse_args()
+    load_env_files(ROOT)
     settings = load_settings(ROOT)
     bridge_config = settings.section("bridge") if isinstance(settings.raw.get("bridge"), dict) else {}
     dashboard_config = settings.raw.get("dashboard", {}) if isinstance(settings.raw.get("dashboard"), dict) else {}

@@ -48,6 +48,7 @@ from src.execution import (
     trading_day_key_for_timestamp,
     trading_day_time_for_timestamp,
 )
+from src.edge_gated_apex import build_edge_gated_apex_policy
 from src.institutional_apex import build_institutional_apex_snapshot
 from src.lane_governor import evaluate_execution_quality_gate
 from src.logger import ApexLogger
@@ -5613,6 +5614,12 @@ def create_bridge_app(
         context = {
             "summary": dict(_record_for_telegram(dashboard_data.get("summary"))),
             "institutional_apex": dict(_record_for_telegram(dashboard_data.get("institutional_apex"))),
+            "institutional_intelligence": dict(_record_for_telegram(dashboard_data.get("institutional_intelligence"))),
+            "training_bootstrap_status": dict(_record_for_telegram(dashboard_data.get("training_bootstrap_status"))),
+            "data_quality": dict(_record_for_telegram(dashboard_data.get("data_quality"))),
+            "promotion_audit": dict(_record_for_telegram(dashboard_data.get("promotion_audit"))),
+            "live_shadow_gap": dict(_record_for_telegram(dashboard_data.get("live_shadow_gap"))),
+            "xau_btc_opportunity_pipeline": dict(_record_for_telegram(dashboard_data.get("xau_btc_opportunity_pipeline"))),
             "top_symbols": list(dashboard_data.get("symbols") or [])[:12],
             "opportunities": list(dashboard_data.get("opportunities") or [])[:8],
             "open_trades": list(dashboard_data.get("open_trades") or [])[:8],
@@ -13652,6 +13659,15 @@ def create_bridge_app(
             "xau_grid": {},
             "open_trades": [],
             "institutional_apex": {},
+            "institutional_intelligence": {},
+            "training_bootstrap_status": {},
+            "data_quality": {},
+            "self_repair": {},
+            "promotion_audit": {},
+            "funded_mission": {},
+            "trajectory_forecast": {},
+            "xau_btc_opportunity_pipeline": {},
+            "live_shadow_gap": {},
             "events": [],
             "dashboard_error": {"message": str(error or "")} if error else {},
         }
@@ -14319,6 +14335,15 @@ def create_bridge_app(
             no_trade_scoreboard=no_trade_scoreboard,
             active_blockers=active_blockers,
         )
+        edge_apex_payload = build_edge_gated_apex_policy(
+            health=health_payload,
+            stats=stats_payload,
+            symbols=symbol_cards,
+            institutional_apex=institutional_apex_payload,
+            risk_config=risk_payload,
+            orchestrator_config=orchestrator_config if isinstance(orchestrator_config, dict) else {},
+            xau_btc_trajectory_stats=xau_btc_trajectory_stats,
+        )
         return {
             "meta": {
                 "read_only": bool(dashboard_policy.read_only),
@@ -14405,6 +14430,15 @@ def create_bridge_app(
             "xau_btc_trajectory_stats": xau_btc_trajectory_stats,
             "self_heal_status": self_heal_payload,
             "institutional_apex": institutional_apex_payload,
+            "institutional_intelligence": edge_apex_payload,
+            "training_bootstrap_status": edge_apex_payload.get("training_bootstrap_status", {}),
+            "data_quality": edge_apex_payload.get("data_quality", {}),
+            "self_repair": edge_apex_payload.get("self_repair", {}),
+            "promotion_audit": edge_apex_payload.get("promotion_audit", {}),
+            "funded_mission": edge_apex_payload.get("funded_mission", {}),
+            "trajectory_forecast": edge_apex_payload.get("trajectory_forecast", {}),
+            "xau_btc_opportunity_pipeline": edge_apex_payload.get("xau_btc_opportunity_pipeline", {}),
+            "live_shadow_gap": edge_apex_payload.get("live_shadow_gap", {}),
             "xau_grid": xau_panel,
             "open_trades": open_positions,
             "events": events_payload,
@@ -14647,6 +14681,7 @@ def create_bridge_app(
     function renderApex(data){
       const target=document.getElementById("section-Apex"); if(!target) return;
       const apex=data.institutional_apex||{}; const funded=apex.funded_mission||{}; const account=funded.account||{}; const mt5=apex.mt5_bridge||{}; const mastery=apex.market_mastery||{}; const dims=mastery.dimensions||{}; const fusion=apex.data_fusion||{}; const anti=apex.anti_overfit||{}; const repair=apex.self_repair||{}; const scaling=apex.scaling||{}; const exec=apex.execution||{};
+      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[];
       const providers=(fusion.providers||[]);
       const topSymbols=(mastery.top_symbols||[]);
       const soft=(repair.soft_blockers||[]);
@@ -14664,6 +14699,19 @@ def create_bridge_app(
           ${mkMetric("Data consensus",`${(Number(fusion.consensus_score||0)*100).toFixed(1)}%`)}
           ${mkMetric("Repair",repair.status||'unknown')}
           ${mkMetric("Scaling",scaling.aggression||'unknown')}
+        </div>
+        <div class="panel card" style="margin-top:14px;background:rgba(34,211,238,.06)">
+          <h3>Edge-Gated BTC / XAU Control</h3>
+          <div class="summary-grid" style="margin-top:12px">
+            ${mkMetric("Policy",edge.policy||'edge_gated_no_forced_live_frequency')}
+            ${mkMetric("Training",training.status||'unknown')}
+            ${mkMetric("Live expansion",String(Boolean(training.live_risk_expansion_allowed)),training.live_risk_expansion_allowed?'good':'warn')}
+            ${mkMetric("Data quality",`${(Number(dataQuality.score||0)*100).toFixed(1)}%`)}
+            ${mkMetric("Promotion",promotion.reason||anti.reason||'unknown')}
+            ${mkMetric("Live-shadow",liveShadow.status||'collecting_or_aligned')}
+          </div>
+          <div class="table" style="margin-top:12px">${priorityRows.map(item=>`<div class="item"><div class="row"><strong>${esc(item.symbol)}</strong><span class="pill ${bandCls(item.live_gate)}">${esc(item.live_gate||'edge_gated')}</span></div><div class="row"><span class="label">Shadow target / candidate debt</span><span class="value mono">${Number((item.shadow_target_10m||{}).low||0).toFixed(0)}-${Number((item.shadow_target_10m||{}).high||0).toFixed(0)} / ${Number(item.candidate_debt_10m||0).toFixed(0)}</span></div><div class="row"><span class="label">Live last 10m / action</span><span class="value">${Number(item.actual_live_trades_last_10m||0).toFixed(0)} / ${esc(item.recommended_action||'observe')}</span></div></div>`).join('') || '<div class="item">Waiting for priority BTC/XAU telemetry.</div>'}</div>
+          <div class="sub" style="margin-top:10px">Live frequency is not forced. Shadow sampling and blocker diagnostics increase first; MT5 risk, funded, drawdown, spread, stale-data, and kill rails stay authoritative.</div>
         </div>
       </div>
       <div class="two-col">

@@ -472,6 +472,50 @@ ai:
   online_promotion_min_delta: 0.02
   online_promotion_min_samples: 100
 
+training_bootstrap:
+  enabled: true
+  max_years: 10
+  startup_shadow_minutes: 90
+  min_data_quality: 0.55
+  provider_priority: ["mt5", "polygon", "twelve_data", "finnhub", "binance", "bybit", "tradingeconomics", "newsapi", "cryptopanic"]
+  missing_provider_behavior: "degrade_to_bridge_or_shadow_only"
+
+institutional_features:
+  enabled: true
+  priority_symbols: ["XAUUSD", "BTCUSD"]
+  native_truth_required_for_live_execution: true
+  mark_proxy_features: true
+  feature_groups:
+    candle_structure: true
+    smc_structure: true
+    volume_profile: true
+    vwap: true
+    multi_timeframe_confluence: true
+    regime_detection: true
+    cross_asset: true
+    order_flow_proxy: true
+
+edge_promotion:
+  recent_window: 200
+  validation_window: 100
+  min_expectancy_gain: 0.03
+  max_drawdown_degradation: 0.0
+
+frequency_policy:
+  priority_symbols: ["XAUUSD", "BTCUSD"]
+  live_policy: "edge_gated_no_forced_frequency"
+  shadow_targets_10m:
+    XAUUSD: {low: 6, high: 8}
+    BTCUSD: {low: 4, high: 6}
+  prime_sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+  prime_session_multiplier: 1.25
+
+funded_mode:
+  mt5_derived_balance: true
+  auto_detect_topups: true
+  protect_base_capital: true
+  scale_only_after_edge_gate: true
+
 idea_lifecycle:
   archive_minutes: 10
   max_rechecks_per_idea: 5

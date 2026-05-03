@@ -201,12 +201,20 @@ class ApexTelegramResponder:
             return self._result(chat_id, user_id, format_status(dashboard_data))
         if lower in {"/funded", "funded"} or re.search(r"\bfunded\b.*\b(pass|target|drawdown|account|status)\b", raw, re.I):
             return self._result(chat_id, user_id, format_funded(dashboard_data))
+        if lower in {"/trajectory", "trajectory"} or re.search(r"\b(trajectory|100k|100k path|forecast)\b", raw, re.I):
+            return self._result(chat_id, user_id, format_trajectory(dashboard_data))
+        if lower in {"/losses", "losses", "review losses"} or re.search(r"\b(losses|loss review|why losing|losing too much)\b", raw, re.I):
+            return self._result(chat_id, user_id, format_losses(dashboard_data))
+        if lower in {"/blockers", "blockers"} or re.search(r"\b(blockers|blocked|why blocked|not trading)\b", raw, re.I):
+            return self._result(chat_id, user_id, format_blockers(dashboard_data))
         if lower in {"/risk", "risk"}:
             return self._result(chat_id, user_id, format_risk(dashboard_data))
         if lower in {"/trades", "trades"}:
             return self._result(chat_id, user_id, format_trades(dashboard_data))
         if lower in {"/apex", "/intel", "apex", "intel"} or re.search(r"\b(thinking|edge|scale|100k|intelligence|apex|repair|self[- ]?heal)\b", raw, re.I):
             return self._result(chat_id, user_id, format_apex(dashboard_data))
+        if re.search(r"\b(increase|more|raise|boost).*\b(frequency|trades|entries)\b|\bfrequency\b.*\b(xau|btc|gold)\b", raw, re.I):
+            return self._result(chat_id, user_id, format_frequency_policy(dashboard_data))
         command_action = {
             "/pause": "pause_trading",
             "/resume": "resume_trading",
@@ -415,7 +423,11 @@ def format_risk(dashboard_data: Mapping[str, Any]) -> str:
     health = _record(dashboard_data.get("health"))
     summary = _record(dashboard_data.get("summary"))
     apex = _record(dashboard_data.get("institutional_apex"))
+    edge = _record(dashboard_data.get("institutional_intelligence"))
     repair = _record(apex.get("self_repair"))
+    edge_repair = _record(edge.get("self_repair") or dashboard_data.get("self_repair"))
+    if edge_repair:
+        repair = edge_repair
     return _html_lines(
         "<b>Risk</b>",
         [
@@ -424,6 +436,91 @@ def format_risk(dashboard_data: Mapping[str, Any]) -> str:
             f"Open risk: <code>{_pct(_number(health.get('open_risk_pct'), 0.0))}</code> | Daily DD: <code>{_pct(_number(summary.get('daily_dd_pct_live'), 0.0))}</code>",
             f"Repair: <code>{_esc(repair.get('status', 'unknown'))}</code> | Soft blockers: <code>{len(_sequence(repair.get('soft_blockers')))}</code> | Hard rails: <code>{len(_sequence(repair.get('hard_rails')))}</code>",
             "Hard drawdown, funded, stale-data, broker, and kill rails are not auto-overridden.",
+        ],
+    )
+
+
+def format_trajectory(dashboard_data: Mapping[str, Any]) -> str:
+    trajectory = _record(dashboard_data.get("trajectory_forecast"))
+    edge = _record(dashboard_data.get("institutional_intelligence"))
+    if not trajectory:
+        trajectory = _record(edge.get("trajectory_forecast"))
+    if not trajectory:
+        return "<b>Trajectory</b>\nNo trajectory forecast is available yet."
+    return _html_lines(
+        "<b>Trajectory</b>",
+        [
+            f"Current equity: <code>{_money(_number(trajectory.get('current_equity'), 0.0))}</code>",
+            f"Short goal: <code>{_money(_number(trajectory.get('short_goal_equity'), 100000.0))}</code> in <code>{_number(trajectory.get('short_goal_days'), 0.0):.0f}</code> days | On track: <code>{bool(trajectory.get('short_goal_on_track'))}</code>",
+            f"Medium goal: <code>{_money(_number(trajectory.get('medium_goal_equity'), 1000000.0))}</code> | On track: <code>{bool(trajectory.get('medium_goal_on_track'))}</code>",
+            f"Forecast type: <code>{_esc(trajectory.get('forecast_type', 'speculative_target_path'))}</code>",
+            "This forecast is not a sizing input and does not authorize higher risk.",
+        ],
+    )
+
+
+def format_losses(dashboard_data: Mapping[str, Any]) -> str:
+    health = _record(dashboard_data.get("health"))
+    rollout = _record(health.get("current_rollout_stats"))
+    overall = _record(rollout.get("overall"))
+    edge = _record(dashboard_data.get("institutional_intelligence"))
+    live_shadow = _record(dashboard_data.get("live_shadow_gap") or edge.get("live_shadow_gap"))
+    priority = [_record(item) for item in _sequence(live_shadow.get("priority_symbols"))]
+    return _html_lines(
+        "<b>Loss Review</b>",
+        [
+            f"Rollout trades: <code>{_number(rollout.get('trade_count'), _number(overall.get('trades'), 0.0)):.0f}</code> | Win rate: <code>{_pct(_number(overall.get('win_rate'), 0.0))}</code>",
+            f"Expectancy: <code>{_number(overall.get('expectancy_r'), 0.0):.3f}R</code> | Profit factor: <code>{_number(overall.get('profit_factor'), 0.0):.2f}</code>",
+            f"Live-shadow status: <code>{_esc(live_shadow.get('status', 'collecting_or_aligned'))}</code> | Max gap: <code>{_pct(_number(live_shadow.get('max_gap_score'), 0.0))}</code>",
+            "Priority gaps: "
+            + _esc(", ".join(f"{item.get('symbol')}:{item.get('status')}" for item in priority[:4]) or "insufficient samples"),
+            "Next safe action: collect more BTCUSD/XAUUSD live-shadow evidence before promoting risk or frequency.",
+        ],
+    )
+
+
+def format_blockers(dashboard_data: Mapping[str, Any]) -> str:
+    edge = _record(dashboard_data.get("institutional_intelligence"))
+    repair = _record(dashboard_data.get("self_repair") or edge.get("self_repair"))
+    pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
+    priority = [_record(item) for item in _sequence(pipeline.get("priority_symbols"))]
+    soft = [_record(item) for item in _sequence(repair.get("soft_blockers"))]
+    hard = [_record(item) for item in _sequence(repair.get("hard_rails"))]
+    priority_lines = [
+        f"{item.get('symbol')}: {item.get('live_gate')} | {item.get('recommended_action')} | blocker={item.get('blocker') or 'none'}"
+        for item in priority[:4]
+    ]
+    return _html_lines(
+        "<b>Blockers</b>",
+        [
+            f"Repair status: <code>{_esc(repair.get('status', 'unknown'))}</code> | Soft: <code>{len(soft)}</code> | Hard: <code>{len(hard)}</code>",
+            f"Recommended bridge action: <code>{_esc(repair.get('recommended_bridge_action', 'none'))}</code>",
+            "BTC/XAU: " + _esc(" ; ".join(priority_lines) or "no priority telemetry yet"),
+            "Hard rails are locked and will not be auto-repaired.",
+        ],
+    )
+
+
+def format_frequency_policy(dashboard_data: Mapping[str, Any]) -> str:
+    edge = _record(dashboard_data.get("institutional_intelligence"))
+    pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
+    priority = [_record(item) for item in _sequence(pipeline.get("priority_symbols"))]
+    lines = []
+    for item in priority[:4]:
+        target = _record(item.get("shadow_target_10m"))
+        lines.append(
+            f"{item.get('symbol')}: shadow target {int(_number(target.get('low'), 0.0))}-{int(_number(target.get('high'), 0.0))}/10m, "
+            f"candidates {int(_number(item.get('actual_candidates_last_10m'), 0.0))}, "
+            f"live {int(_number(item.get('actual_live_trades_last_10m'), 0.0))}, "
+            f"gate {item.get('live_gate')}"
+        )
+    return _html_lines(
+        "<b>Frequency Policy</b>",
+        [
+            "Live frequency is edge-gated; Telegram cannot force entries or raise risk.",
+            *[_esc(line) for line in lines],
+            f"Forced live frequency: <code>{bool(pipeline.get('live_frequency_forced'))}</code>",
+            "Safe response to under-trading is more shadow sampling and blocker diagnostics first.",
         ],
     )
 
@@ -445,8 +542,12 @@ def format_trades(dashboard_data: Mapping[str, Any]) -> str:
 
 def format_apex(dashboard_data: Mapping[str, Any]) -> str:
     apex = _record(dashboard_data.get("institutional_apex"))
+    edge = _record(dashboard_data.get("institutional_intelligence"))
     if not apex:
         return "<b>Institutional Apex</b>\nNo Apex snapshot is available yet."
+    training = _record(dashboard_data.get("training_bootstrap_status") or edge.get("training_bootstrap_status"))
+    promotion = _record(dashboard_data.get("promotion_audit") or edge.get("promotion_audit"))
+    pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
     return _html_lines(
         "<b>Institutional Apex</b>",
         [
@@ -454,21 +555,30 @@ def format_apex(dashboard_data: Mapping[str, Any]) -> str:
             _esc(apex.get("summary", "")),
             f"Market mastery: <code>{_pct(_number(_record(apex.get('market_mastery')).get('score'), 0.0))}</code>",
             f"Data fusion: <code>{_pct(_number(_record(apex.get('data_fusion')).get('consensus_score'), 0.0))}</code>",
-            f"Anti-overfit: <code>{_esc(_record(apex.get('anti_overfit')).get('reason', 'unknown'))}</code>",
+            f"Anti-overfit: <code>{_esc(promotion.get('reason') or _record(apex.get('anti_overfit')).get('reason', 'unknown'))}</code>",
             f"Self-repair: <code>{_esc(_record(apex.get('self_repair')).get('status', 'unknown'))}</code>",
             f"Scaling: <code>{_esc(_record(apex.get('scaling')).get('aggression', 'unknown'))}</code>",
+            f"Training: <code>{_esc(training.get('status', 'unknown'))}</code> | Samples: <code>{_number(training.get('trained_samples'), 0.0):.0f}</code>",
+            f"BTC/XAU policy: <code>{_esc(pipeline.get('policy', 'edge_gated'))}</code> | Forced live freq: <code>{bool(pipeline.get('live_frequency_forced'))}</code>",
         ],
     )
 
 
 def local_explanation(question: str, dashboard_data: Mapping[str, Any]) -> str:
     apex = _record(dashboard_data.get("institutional_apex"))
+    edge = _record(dashboard_data.get("institutional_intelligence"))
     summary = _record(dashboard_data.get("summary"))
     symbols = [_record(item) for item in _sequence(dashboard_data.get("symbols"))]
+    pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
+    priority = [_record(item) for item in _sequence(pipeline.get("priority_symbols"))]
     blockers = [item for item in symbols if str(item.get("blocked_reason") or item.get("primary_block_reason") or "").strip()]
     blocker_summary = "; ".join(
         f"{item.get('symbol')}:{item.get('blocked_reason') or item.get('primary_block_reason')}"
         for item in blockers[:4]
+    )
+    priority_summary = "; ".join(
+        f"{item.get('symbol')} debt={item.get('candidate_debt_10m')} gate={item.get('live_gate')}"
+        for item in priority[:2]
     )
     return _html_lines(
         "<b>APEX Operator Answer</b>",
@@ -478,6 +588,7 @@ def local_explanation(question: str, dashboard_data: Mapping[str, Any]) -> str:
             _esc(apex.get("summary", "No institutional snapshot available.")),
             f"Equity: <code>{_money(_number(summary.get('equity'), 0.0))}</code> | Daily state: <code>{_esc(summary.get('current_daily_state', ''))}</code>",
             f"Blocked symbols: <code>{len(blockers)}</code>. Main blockers: <code>{_esc(blocker_summary)}</code>",
+            f"BTC/XAU opportunity: <code>{_esc(priority_summary or 'waiting for priority telemetry')}</code>",
             "Telegram scope: explanations plus pause, refresh, resume confirmation, and kill confirmation only.",
         ],
     )
@@ -489,6 +600,9 @@ def _help_text() -> str:
         [
             "/status - MT5, equity, daily state, funded summary",
             "/funded - pass target, daily/overall drawdown buffer, throttle",
+            "/trajectory - speculative $100 to $100K target path",
+            "/losses - live rollout and live-shadow gap review",
+            "/blockers - BTC/XAU blockers and safe repair status",
             "/risk - drawdown, open risk, repair rails",
             "/trades - open trade management snapshot",
             "/apex - institutional intelligence and self-repair summary",

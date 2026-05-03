@@ -1678,6 +1678,11 @@ def build_runtime(force_mt5: bool = False, skip_mt5: bool = False):
         "shadow_promotion",
         "execution_memory",
         "self_heal",
+        "training_bootstrap",
+        "institutional_features",
+        "edge_promotion",
+        "frequency_policy",
+        "funded_mode",
     ):
         if section_name not in bridge_orchestrator_config and isinstance(settings.raw.get(section_name), dict):
             bridge_orchestrator_config[section_name] = dict(settings.raw.get(section_name) or {})
@@ -7971,6 +7976,11 @@ def run_bot(
         "shadow_promotion",
         "execution_memory",
         "self_heal",
+        "training_bootstrap",
+        "institutional_features",
+        "edge_promotion",
+        "frequency_policy",
+        "funded_mode",
     ):
         if section_name not in bridge_orchestrator_config and isinstance(settings.raw.get(section_name), dict):
             bridge_orchestrator_config[section_name] = dict(settings.raw.get(section_name) or {})

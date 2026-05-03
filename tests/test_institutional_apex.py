@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.apex_telegram import ApexTelegramConfig, ApexTelegramResponder
+from src.edge_gated_apex import build_edge_gated_apex_policy
 from src.institutional_apex import build_institutional_apex_snapshot
 
 
@@ -79,7 +80,61 @@ def _dashboard_payload() -> dict:
             }
         },
     )
-    return {"summary": {"equity": 104.0, "current_daily_state": "DAILY_NORMAL"}, "institutional_apex": apex, "symbols": symbols}
+    edge = build_edge_gated_apex_policy(
+        health={
+            **health,
+            "learning_brain": {
+                "trained_samples": 320,
+                "last_market_history_seed_status": "ok",
+                "last_market_history_backfill_status": "failed",
+            },
+        },
+        stats=stats,
+        symbols=symbols,
+        institutional_apex=apex,
+        risk_config={
+            "funded": {
+                "enabled": True,
+                "group": "FTMO",
+                "phase": "evaluation",
+                "starting_balance": 100.0,
+                "daily_loss_limit_pct": 0.05,
+                "overall_drawdown_limit_pct": 0.10,
+                "profit_target_pct": 0.08,
+            }
+        },
+        orchestrator_config={
+            "edge_promotion": {
+                "recent_window": 200,
+                "validation_window": 100,
+                "min_expectancy_gain": 0.03,
+                "max_drawdown_degradation": 0.0,
+            },
+            "frequency_policy": {"priority_symbols": ["XAUUSD", "BTCUSD"]},
+        },
+        xau_btc_trajectory_stats={
+            "XAUUSD": {
+                "actual_candidates_last_10m": 2,
+                "actual_trades_last_10m": 1,
+                "soft_target_trades_last_10m": {"low": 6, "high": 8},
+                "catchup_pressure": 0.4,
+            }
+        },
+    )
+    return {
+        "summary": {"equity": 104.0, "current_daily_state": "DAILY_NORMAL"},
+        "institutional_apex": apex,
+        "institutional_intelligence": edge,
+        "training_bootstrap_status": edge["training_bootstrap_status"],
+        "data_quality": edge["data_quality"],
+        "self_repair": edge["self_repair"],
+        "promotion_audit": edge["promotion_audit"],
+        "funded_mission": edge["funded_mission"],
+        "trajectory_forecast": edge["trajectory_forecast"],
+        "xau_btc_opportunity_pipeline": edge["xau_btc_opportunity_pipeline"],
+        "live_shadow_gap": edge["live_shadow_gap"],
+        "symbols": symbols,
+    }
 
 
 def test_institutional_apex_uses_mt5_and_funded_buffers() -> None:
@@ -107,3 +162,54 @@ def test_telegram_responder_blocks_trade_placement_and_reports_status() -> None:
     assert "APEX Status" in status.text
     assert pause.action == "pause_trading"
     assert kill.confirmation_required is True
+
+
+def test_edge_policy_prioritizes_shadow_without_forcing_live_frequency() -> None:
+    dashboard = _dashboard_payload()
+    edge = dashboard["institutional_intelligence"]
+    pipeline = edge["xau_btc_opportunity_pipeline"]
+    xau = pipeline["priority_symbols"][0]
+
+    assert edge["policy"] == "edge_gated_no_forced_live_frequency"
+    assert pipeline["live_frequency_forced"] is False
+    assert xau["symbol"] == "XAUUSD"
+    assert xau["candidate_debt_10m"] == 4
+    assert xau["forced_live_frequency"] is False
+    assert xau["shadow_burst_allowed"] is True
+    assert xau["live_gate"] in {"eligible_if_bridge_approves", "blocked_by_edge_or_risk_gate"}
+
+
+def test_edge_policy_locks_hard_rails_and_blocks_expansion() -> None:
+    dashboard = _dashboard_payload()
+    apex = dict(dashboard["institutional_apex"])
+    apex["self_repair"] = {
+        "soft_blockers": [],
+        "hard_rails": [{"symbol": "SYSTEM", "reason": "daily_hard_stop"}],
+        "status": "hard_rail_holds",
+    }
+    edge = build_edge_gated_apex_policy(
+        health={"learning_brain": {"trained_samples": 500, "last_market_history_seed_status": "ok"}},
+        stats={},
+        symbols=dashboard["symbols"],
+        institutional_apex=apex,
+        orchestrator_config={},
+    )
+
+    assert edge["self_repair"]["hard_rails_locked"] is True
+    assert edge["training_bootstrap_status"]["live_risk_expansion_allowed"] is False
+    assert edge["xau_btc_opportunity_pipeline"]["hard_rails_present"] is True
+
+
+def test_telegram_reports_edge_surfaces_without_runtime_bypass() -> None:
+    dashboard = _dashboard_payload()
+    responder = ApexTelegramResponder(config=ApexTelegramConfig(enabled=True, allow_controls=True, ai_enabled=False))
+
+    trajectory = responder.handle_text("/trajectory", dashboard, chat_id="123")
+    blockers = responder.handle_text("/blockers", dashboard, chat_id="123")
+    frequency = responder.handle_text("increase frequency on XAU", dashboard, chat_id="123")
+
+    assert "Trajectory" in trajectory.text
+    assert "Blockers" in blockers.text
+    assert "Frequency Policy" in frequency.text
+    assert "cannot force entries" in frequency.text
+    assert not frequency.action
