@@ -55,7 +55,15 @@ export function bridgePayloadToIngest(input: {
       session: textFrom(String(stats.session ?? ""), String(dashboard.session ?? ""), String(runtime.session ?? "")),
       killState: textFrom(String(control.kill_switch ?? ""), String(dashboard.kill_state ?? ""), String(health.status ?? "")),
       openRiskPct: numberFrom(stats.open_risk_pct, dashboard.open_risk_pct, runtime.open_risk_pct),
-      payload: { health, stats, dashboard_summary: dashboard.summary ?? dashboard.status ?? null, control },
+      payload: {
+        health,
+        stats,
+        dashboard_summary: dashboard.summary ?? dashboard.status ?? null,
+        control,
+        mt5_account: asRecord(stats.latest_account_snapshot ?? account),
+        account_scaling: asRecord(stats.account_scaling),
+        risk_state: asRecord(stats.risk_state),
+      },
     },
     symbols: pairs.map((pair) => ({
       symbol: String(pair.symbol ?? pair.name ?? pair.pair ?? "UNKNOWN").toUpperCase(),
@@ -99,4 +107,3 @@ function eventToIngest(event: AnyRecord, observedAt: string) {
     payload: event,
   };
 }
-

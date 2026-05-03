@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ingestTelemetry, getOverview, runJanitor } from "@/lib/repository";
+import { ingestTelemetry, getOverview, runJanitor, saveFundedConfig } from "@/lib/repository";
 import { resetMemoryStoreForTests } from "@/lib/test-store";
 
 describe("repository memory fallback", () => {
@@ -24,6 +24,53 @@ describe("repository memory fallback", () => {
     const overview = await getOverview();
     expect(overview.bot.equity).toBe(125);
     expect(overview.symbols.some((symbol) => symbol.symbol === "btc")).toBe(true);
+    expect(overview.funded.status.account.equity).toBe(125);
+  });
+
+  it("stores funded mode config and recalculates against the latest MT5 snapshot", async () => {
+    const observedAt = "2026-01-01T00:00:00.000Z";
+    await ingestTelemetry({
+      source: "test",
+      observedAt,
+      bot: {
+        observedAt,
+        source: "test",
+        equity: 106,
+        balance: 104,
+        payload: {
+          stats: {
+            active_bridge_context: { account: "FUNDED-A", magic: 77 },
+            account_scaling: { equity: 106, balance: 104, free_margin: 100, high_watermark_equity: 107 },
+            latest_account_snapshot: { account: "FUNDED-A", magic: 77, equity: 106, balance: 104 },
+            risk_state: { day_start_equity: 103, day_high_equity: 107 },
+          },
+        },
+      },
+      symbols: [],
+      trades: [],
+      orders: [],
+      risks: [],
+      dataIntegrity: [],
+    });
+    await saveFundedConfig({
+      enabled: true,
+      group: "ftmo",
+      phase: "evaluation",
+      startingBalance: 100,
+      profitTargetPct: 0.08,
+      dailyDrawdownPct: 0.05,
+      maxDrawdownPct: 0.10,
+      trailingDrawdown: false,
+      baseRiskPct: 0.005,
+      maxOpenRiskPct: 0.015,
+      dailyResetTimezone: "Australia/Sydney",
+    });
+
+    const overview = await getOverview();
+    expect(overview.funded.config.enabled).toBe(true);
+    expect(overview.funded.status.mt5Derived).toBe(true);
+    expect(overview.funded.status.account.account).toBe("FUNDED-A");
+    expect(overview.funded.status.neededToPass).toBeCloseTo(2);
   });
 
   it("janitor deletes old raw memory events without deleting key demo state", async () => {
@@ -41,4 +88,3 @@ describe("repository memory fallback", () => {
     expect(result.rawDeleted).toBeGreaterThanOrEqual(3);
   });
 });
-

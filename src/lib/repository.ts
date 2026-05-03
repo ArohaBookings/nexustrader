@@ -3,6 +3,7 @@ import { databaseConfigured, getDb } from "@/db/client";
 import {
   botSnapshots,
   commandRequests,
+  fundedConfigs,
   janitorRuns,
   orderEvents,
   riskEvents,
@@ -12,7 +13,8 @@ import {
   tradeEvents,
 } from "@/db/schema";
 import { demoOverview } from "@/lib/demo-data";
-import type { EventInput, IngestPayload } from "@/lib/validation";
+import { calculateFundedStatus, DEFAULT_FUNDED_CONFIG, sanitizeFundedConfig, type FundedConfig } from "@/lib/funded-mode";
+import type { EventInput, FundedConfigInput, IngestPayload } from "@/lib/validation";
 
 type Json = Record<string, unknown>;
 
@@ -25,6 +27,7 @@ type MemoryStore = {
   telegram: Json[];
   commands: Json[];
   janitor: Json[];
+  fundedConfig: FundedConfig;
 };
 
 declare global {
@@ -41,12 +44,17 @@ function memory() {
     telegram: [],
     commands: demoOverview.commands,
     janitor: [],
+    fundedConfig: DEFAULT_FUNDED_CONFIG,
   };
   return globalThis.__nexusTraderStore;
 }
 
 function numeric(value: number | null | undefined) {
   return value === undefined || value === null ? null : String(value);
+}
+
+function numericRequired(value: number) {
+  return String(value);
 }
 
 function dateOrNow(value: string | undefined) {
@@ -140,14 +148,20 @@ export async function ingestTelemetry(payload: IngestPayload) {
 export async function getOverview() {
   if (!databaseConfigured()) {
     const store = memory();
+    const bot = store.bots.at(-1) ?? demoOverview.bot;
+    const fundedConfig = store.fundedConfig;
     return {
       ...demoOverview,
-      bot: store.bots.at(-1) ?? demoOverview.bot,
+      bot,
       symbols: latestBySymbol(store.symbols),
       trades: store.trades.slice(-50).reverse(),
       orders: store.orders.slice(-50).reverse(),
       risks: store.risks.slice(-50).reverse(),
       commands: store.commands.slice(-20).reverse(),
+      funded: {
+        config: fundedConfig,
+        status: calculateFundedStatus(fundedConfig, bot),
+      },
     };
   }
 
@@ -158,6 +172,7 @@ export async function getOverview() {
   const orders = await db.select().from(orderEvents).orderBy(desc(orderEvents.occurredAt)).limit(50);
   const risks = await db.select().from(riskEvents).orderBy(desc(riskEvents.occurredAt)).limit(50);
   const commands = await db.select().from(commandRequests).orderBy(desc(commandRequests.createdAt)).limit(20);
+  const fundedConfig = await getFundedConfig();
   return {
     bot: bot ?? demoOverview.bot,
     symbols: latestBySymbol(symbols as unknown as Json[]),
@@ -166,7 +181,82 @@ export async function getOverview() {
     risks,
     commands,
     equityCurve: demoOverview.equityCurve,
+    funded: {
+      config: fundedConfig,
+      status: calculateFundedStatus(fundedConfig, (bot ?? demoOverview.bot) as unknown as Json),
+    },
   };
+}
+
+export async function getFundedConfig(): Promise<FundedConfig> {
+  if (!databaseConfigured()) {
+    return memory().fundedConfig;
+  }
+  const [row] = await getDb().select().from(fundedConfigs).where(eq(fundedConfigs.name, "default")).limit(1);
+  if (!row) return DEFAULT_FUNDED_CONFIG;
+  return sanitizeFundedConfig({
+    enabled: row.enabled,
+    group: row.group,
+    phase: row.phase,
+    startingBalance: Number(row.startingBalance),
+    profitTargetPct: Number(row.profitTargetPct),
+    dailyDrawdownPct: Number(row.dailyDrawdownPct),
+    maxDrawdownPct: Number(row.maxDrawdownPct),
+    trailingDrawdown: row.trailingDrawdown,
+    baseRiskPct: Number(row.baseRiskPct),
+    maxOpenRiskPct: Number(row.maxOpenRiskPct),
+    dailyResetTimezone: row.dailyResetTimezone,
+  });
+}
+
+export async function getFundedOverview() {
+  const overview = await getOverview();
+  return overview.funded;
+}
+
+export async function saveFundedConfig(input: FundedConfigInput): Promise<FundedConfig> {
+  const config = sanitizeFundedConfig(input);
+  if (!databaseConfigured()) {
+    memory().fundedConfig = config;
+    return config;
+  }
+  await getDb()
+    .insert(fundedConfigs)
+    .values({
+      name: "default",
+      enabled: config.enabled,
+      group: config.group,
+      phase: config.phase,
+      startingBalance: numericRequired(config.startingBalance),
+      profitTargetPct: numericRequired(config.profitTargetPct),
+      dailyDrawdownPct: numericRequired(config.dailyDrawdownPct),
+      maxDrawdownPct: numericRequired(config.maxDrawdownPct),
+      trailingDrawdown: config.trailingDrawdown,
+      baseRiskPct: numericRequired(config.baseRiskPct),
+      maxOpenRiskPct: numericRequired(config.maxOpenRiskPct),
+      dailyResetTimezone: config.dailyResetTimezone,
+      payload: { source: "owner_dashboard" },
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: fundedConfigs.name,
+      set: {
+        enabled: config.enabled,
+        group: config.group,
+        phase: config.phase,
+        startingBalance: numericRequired(config.startingBalance),
+        profitTargetPct: numericRequired(config.profitTargetPct),
+        dailyDrawdownPct: numericRequired(config.dailyDrawdownPct),
+        maxDrawdownPct: numericRequired(config.maxDrawdownPct),
+        trailingDrawdown: config.trailingDrawdown,
+        baseRiskPct: numericRequired(config.baseRiskPct),
+        maxOpenRiskPct: numericRequired(config.maxOpenRiskPct),
+        dailyResetTimezone: config.dailyResetTimezone,
+        payload: { source: "owner_dashboard" },
+        updatedAt: new Date(),
+      },
+    });
+  return config;
 }
 
 export async function getSymbols() {

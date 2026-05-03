@@ -1,4 +1,5 @@
 import { subMinutes } from "date-fns";
+import { calculateFundedStatus, DEFAULT_FUNDED_CONFIG } from "@/lib/funded-mode";
 
 const now = new Date();
 
@@ -33,6 +34,12 @@ export const demoOverview = {
       bridge_status: "UP",
       current_daily_state: "DAILY_NORMAL",
       live_control_scope: "ops_controls_only",
+      stats: {
+        active_bridge_context: { account: "DEMO-MT5", magic: 4254 },
+        account_scaling: { equity: 189.42, balance: 184.11, free_margin: 177.2, high_watermark_equity: 194.4 },
+        latest_account_snapshot: { account: "DEMO-MT5", magic: 4254, equity: 189.42, balance: 184.11, free_margin: 177.2, floating_pnl: 2.1, total_open_positions: 2 },
+        risk_state: { day_start_equity: 181.2, day_high_equity: 194.4, daily_dd_pct_live: 0.0256, daily_pnl_pct: 0.0453, open_positions: 2 },
+      },
     },
   },
   symbols: [
@@ -87,6 +94,22 @@ export const demoOverview = {
     { commandId: "cmd-demo-1", action: "pause_trading", status: "pending_confirmation", requestedText: "/pause", createdAt: subMinutes(now, 8).toISOString() },
   ],
   equityCurve: demoEquityCurve,
+  funded: {
+    config: DEFAULT_FUNDED_CONFIG,
+    status: calculateFundedStatus(DEFAULT_FUNDED_CONFIG, {
+      equity: 189.42,
+      balance: 184.11,
+      pnlToday: 14.33,
+      payload: {
+        stats: {
+          active_bridge_context: { account: "DEMO-MT5", magic: 4254 },
+          account_scaling: { equity: 189.42, balance: 184.11, free_margin: 177.2, high_watermark_equity: 194.4 },
+          latest_account_snapshot: { account: "DEMO-MT5", magic: 4254, equity: 189.42, balance: 184.11, free_margin: 177.2, floating_pnl: 2.1, total_open_positions: 2 },
+          risk_state: { day_start_equity: 181.2, day_high_equity: 194.4, daily_dd_pct_live: 0.0256, daily_pnl_pct: 0.0453, open_positions: 2 },
+        },
+      },
+    }),
+  },
 };
 
 export type DemoOverview = typeof demoOverview;

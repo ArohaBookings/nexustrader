@@ -35,6 +35,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { DEFAULT_FUNDED_CONFIG, FUNDED_PRESETS } from "@/lib/funded-mode";
 import { compactNumber, percent, usd } from "@/lib/utils";
 
 type Overview = {
@@ -45,6 +46,10 @@ type Overview = {
   risks: Record<string, unknown>[];
   commands: Record<string, unknown>[];
   equityCurve: Record<string, unknown>[];
+  funded?: {
+    config: Record<string, unknown>;
+    status: Record<string, unknown>;
+  };
 };
 
 const tabs = [
@@ -53,6 +58,7 @@ const tabs = [
   { id: "symbols", label: "Symbols", icon: RadioTower },
   { id: "orders", label: "Orders", icon: CircleDollarSign },
   { id: "risk", label: "Risk", icon: ShieldAlert },
+  { id: "funded", label: "Funded", icon: ShieldCheck },
   { id: "data", label: "Data", icon: DatabaseZap },
   { id: "ops", label: "Ops", icon: Terminal },
   { id: "trajectory", label: "$100K", icon: TrendingUp },
@@ -114,8 +120,13 @@ export function NexusDashboard({ initialOverview }: { initialOverview: Overview 
   const risks = overview.risks ?? [];
   const commands = overview.commands ?? [];
   const equityCurve = overview.equityCurve ?? [];
+  const funded = (overview.funded ?? { config: DEFAULT_FUNDED_CONFIG, status: {} }) as {
+    config: Record<string, unknown>;
+    status: Record<string, unknown>;
+  };
   const openBlockers = symbols.filter((symbol) => text(symbol.blocker, "")).length;
   const killState = text(bot.killState, "NONE");
+  const fundedStatus = text(funded.status?.status, "disabled");
 
   return (
     <main className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -137,6 +148,7 @@ export function NexusDashboard({ initialOverview }: { initialOverview: Overview 
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
           <StatusPill label="Sync" value={lastSyncLabel} tone="cyan" />
+          <StatusPill label="Funded" value={fundedStatus} tone={fundedStatus === "hard_stop" ? "rose" : fundedStatus === "disabled" ? "cyan" : "lime"} />
           <StatusPill label="Kill" value={killState} tone={killState === "NONE" || killState === "false" ? "lime" : "rose"} />
           <a
             className="inline-flex h-10 items-center gap-2 border border-white/15 px-3 text-zinc-200 transition hover:border-cyan-300/50 hover:text-cyan-100"
@@ -152,7 +164,13 @@ export function NexusDashboard({ initialOverview }: { initialOverview: Overview 
         <Metric icon={CircleDollarSign} label="Equity" value={usd(n(bot.equity))} sub={`Balance ${usd(n(bot.balance))}`} tone="cyan" />
         <Metric icon={Zap} label="Daily PnL" value={usd(n(bot.pnlToday))} sub="Observed bridge/lab delta" tone={n(bot.pnlToday) >= 0 ? "lime" : "rose"} />
         <Metric icon={Gauge} label="Drawdown" value={percent(n(bot.drawdownPct))} sub={`Open risk ${percent(n(bot.openRiskPct))}`} tone="amber" />
-        <Metric icon={TimerReset} label="Queue" value={String(bot.queueDepth ?? 0)} sub={`Session ${text(bot.session)}`} tone="violet" />
+        <Metric
+          icon={TimerReset}
+          label="Funded Buffer"
+          value={usd(n(funded.status?.dailyLossRemainingUsd))}
+          sub={`Queue ${String(bot.queueDepth ?? 0)} / ${text(bot.session)}`}
+          tone={fundedStatus === "hard_stop" || n(funded.status?.dailyLossRemainingUsd) < 0 ? "rose" : "violet"}
+        />
       </section>
 
       <nav className="mx-auto mt-5 flex max-w-7xl gap-2 overflow-x-auto border-y border-white/10 py-2">
@@ -183,6 +201,7 @@ export function NexusDashboard({ initialOverview }: { initialOverview: Overview 
         {activeTab === "symbols" ? <SymbolsPanel symbols={symbols} /> : null}
         {activeTab === "orders" ? <OrdersPanel orders={orders} trades={trades} chartsReady={chartsReady} /> : null}
         {activeTab === "risk" ? <RiskPanel bot={bot} risks={risks} /> : null}
+        {activeTab === "funded" ? <FundedPanel funded={funded} onFundedUpdate={(next) => setOverview((current) => ({ ...current, funded: next }))} /> : null}
         {activeTab === "data" ? <DataPanel risks={risks} symbols={symbols} /> : null}
         {activeTab === "ops" ? <OpsPanel commands={commands} /> : null}
         {activeTab === "trajectory" ? <TrajectoryPanel equityCurve={equityCurve} chartsReady={chartsReady} /> : null}
@@ -329,6 +348,160 @@ function RiskPanel({ bot, risks }: { bot: Record<string, unknown>; risks: Record
   );
 }
 
+function FundedPanel({
+  funded,
+  onFundedUpdate,
+}: {
+  funded: { config: Record<string, unknown>; status: Record<string, unknown> };
+  onFundedUpdate: (funded: { config: Record<string, unknown>; status: Record<string, unknown> }) => void;
+}) {
+  const [form, setForm] = useState<Record<string, unknown>>({ ...DEFAULT_FUNDED_CONFIG, ...(funded.config ?? {}) });
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const status = funded.status ?? {};
+  const account = (status.account ?? {}) as Record<string, unknown>;
+
+  const setField = (key: string, value: unknown) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setSaveState("idle");
+  };
+
+  const setGroup = (group: string) => {
+    const preset = FUNDED_PRESETS[group] ?? {};
+    setForm((current) => ({ ...current, ...preset, group }));
+    setSaveState("idle");
+  };
+
+  const save = async () => {
+    setSaveState("saving");
+    const body = {
+      enabled: Boolean(form.enabled),
+      group: text(form.group, DEFAULT_FUNDED_CONFIG.group),
+      phase: text(form.phase, DEFAULT_FUNDED_CONFIG.phase),
+      startingBalance: n(form.startingBalance, DEFAULT_FUNDED_CONFIG.startingBalance),
+      profitTargetPct: n(form.profitTargetPct, DEFAULT_FUNDED_CONFIG.profitTargetPct),
+      dailyDrawdownPct: n(form.dailyDrawdownPct, DEFAULT_FUNDED_CONFIG.dailyDrawdownPct),
+      maxDrawdownPct: n(form.maxDrawdownPct, DEFAULT_FUNDED_CONFIG.maxDrawdownPct),
+      trailingDrawdown: Boolean(form.trailingDrawdown),
+      baseRiskPct: n(form.baseRiskPct, DEFAULT_FUNDED_CONFIG.baseRiskPct),
+      maxOpenRiskPct: n(form.maxOpenRiskPct, DEFAULT_FUNDED_CONFIG.maxOpenRiskPct),
+      dailyResetTimezone: text(form.dailyResetTimezone, DEFAULT_FUNDED_CONFIG.dailyResetTimezone),
+    };
+    const response = await fetch("/api/funded", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      setSaveState("error");
+      return;
+    }
+    onFundedUpdate(await response.json());
+    setSaveState("saved");
+  };
+
+  const statusTone = fundedTone(text(status.status, "disabled"));
+  const nearStop = n(status.dailyLossRemainingUsd) <= 0 || n(status.maxLossRemainingUsd) <= 0;
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <Panel title="Funded Mode Guard" icon={ShieldCheck}>
+        <div className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <Pulse label="Status" value={text(status.status, "disabled")} tone={statusTone} />
+            <Pulse label="MT5 Source" value={status.mt5Derived ? "live bridge" : "fallback"} tone={status.mt5Derived ? "lime" : "amber"} />
+            <Pulse label="Account" value={text(account.account, "not linked")} tone="cyan" />
+            <Pulse label="Risk Throttle" value={percent(n(status.riskThrottle, 1))} tone={nearStop ? "rose" : statusTone} />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <MiniStat label="Equity" value={usd(n(account.equity))} />
+            <MiniStat label="Balance" value={usd(n(account.balance))} />
+            <MiniStat label="Free margin" value={usd(n(account.freeMargin))} />
+            <MiniStat label="Start balance" value={usd(n(status.startingBalance))} />
+            <MiniStat label="Target equity" value={usd(n(status.targetEquity))} />
+            <MiniStat label="Needed to pass" value={usd(n(status.neededToPass))} />
+            <MiniStat label="Daily floor" value={usd(n(status.dailyLossFloor))} />
+            <MiniStat label="Daily buffer" value={usd(n(status.dailyLossRemainingUsd))} />
+            <MiniStat label="Overall buffer" value={usd(n(status.maxLossRemainingUsd))} />
+            <MiniStat label="Max risk/trade" value={usd(n(status.maxRiskPerTradeUsd))} />
+            <MiniStat label="Max open risk" value={usd(n(status.maxOpenRiskUsd))} />
+            <MiniStat label="Open positions" value={String(account.openPositions ?? 0)} />
+          </div>
+
+          <div className="grid gap-3">
+            <ProgressLine label="Pass progress" value={n(status.passProgressPct)} tone="lime" />
+            <ProgressLine label="Daily buffer" value={n(status.dailyBufferPct)} tone={n(status.dailyBufferPct) <= 0.25 ? "rose" : "cyan"} />
+            <ProgressLine label="Overall buffer" value={n(status.maxBufferPct)} tone={n(status.maxBufferPct) <= 0.25 ? "rose" : "violet"} />
+          </div>
+
+          <p className="border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm leading-6 text-cyan-100">
+            Guard reason: {text(status.fundedGuardReason, "funded_mode_waiting")}. The funded panel calculates limits from MT5 bridge equity, balance,
+            day-start equity, day-high equity, floating PnL, and open-position state. It does not place trades.
+          </p>
+        </div>
+      </Panel>
+
+      <Panel title="Funding Rules" icon={Gauge}>
+        <div className="grid gap-3">
+          <label className="flex items-center justify-between gap-3 border border-white/10 bg-white/[0.03] p-3 text-sm text-zinc-300">
+            <span>Funded mode</span>
+            <input
+              type="checkbox"
+              checked={Boolean(form.enabled)}
+              onChange={(event) => setField("enabled", event.target.checked)}
+              className="size-5 accent-cyan-300"
+            />
+          </label>
+          <Field label="Funded group">
+            <select value={text(form.group, "custom")} onChange={(event) => setGroup(event.target.value)} className={fieldClass}>
+              <option value="custom">Custom</option>
+              <option value="ftmo">FTMO-style</option>
+              <option value="fundednext">FundedNext-style</option>
+              <option value="the5ers">The5ers-style</option>
+              <option value="apex">Apex futures-style</option>
+              <option value="topstep">Topstep-style</option>
+            </select>
+          </Field>
+          <Field label="Phase">
+            <select value={text(form.phase, "evaluation")} onChange={(event) => setField("phase", event.target.value)} className={fieldClass}>
+              <option value="evaluation">Evaluation</option>
+              <option value="verification">Verification</option>
+              <option value="funded_live">Funded live</option>
+              <option value="personal_100">Personal $100 build</option>
+            </select>
+          </Field>
+          <NumberField label="Starting balance" value={n(form.startingBalance)} onChange={(value) => setField("startingBalance", value)} prefix="$" step="1" />
+          <PercentField label="Profit target" value={n(form.profitTargetPct)} onChange={(value) => setField("profitTargetPct", value)} />
+          <PercentField label="Daily drawdown" value={n(form.dailyDrawdownPct)} onChange={(value) => setField("dailyDrawdownPct", value)} />
+          <PercentField label="Overall drawdown" value={n(form.maxDrawdownPct)} onChange={(value) => setField("maxDrawdownPct", value)} />
+          <PercentField label="Base risk/trade" value={n(form.baseRiskPct)} onChange={(value) => setField("baseRiskPct", value)} />
+          <PercentField label="Max open risk" value={n(form.maxOpenRiskPct)} onChange={(value) => setField("maxOpenRiskPct", value)} />
+          <label className="flex items-center justify-between gap-3 border border-white/10 bg-white/[0.03] p-3 text-sm text-zinc-300">
+            <span>Trailing drawdown</span>
+            <input
+              type="checkbox"
+              checked={Boolean(form.trailingDrawdown)}
+              onChange={(event) => setField("trailingDrawdown", event.target.checked)}
+              className="size-5 accent-cyan-300"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={saveState === "saving"}
+            className="h-11 border border-cyan-300/50 bg-cyan-300 px-4 text-sm font-black uppercase tracking-[0.18em] text-black transition hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-70"
+          >
+            {saveState === "saving" ? "Saving" : "Save Funded Mode"}
+          </button>
+          <p className={`text-sm ${saveState === "error" ? "text-rose-200" : saveState === "saved" ? "text-lime-200" : "text-zinc-500"}`}>
+            {saveState === "error" ? "Save failed." : saveState === "saved" ? "Saved." : "Changes apply to the Nexus funded calculator."}
+          </p>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 function DataPanel({ risks, symbols }: { risks: Record<string, unknown>[]; symbols: Record<string, unknown>[] }) {
   const dataRows = risks.filter((risk) => /data|gap|stale|proxy|book|ohlcv/i.test(`${risk.type ?? ""} ${risk.reason ?? ""}`));
   return (
@@ -417,6 +590,88 @@ function TrajectoryPanel({ equityCurve, chartsReady }: { equityCurve: Record<str
       </Panel>
     </div>
   );
+}
+
+const fieldClass =
+  "h-11 w-full border border-white/10 bg-black/55 px-3 font-mono text-sm text-white outline-none transition focus:border-cyan-300";
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-2 text-sm">
+      <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  prefix = "",
+  step = "0.01",
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  prefix?: string;
+  step?: string;
+}) {
+  return (
+    <Field label={label}>
+      <div className="flex items-center border border-white/10 bg-black/55 focus-within:border-cyan-300">
+        {prefix ? <span className="px-3 font-mono text-sm text-zinc-500">{prefix}</span> : null}
+        <input
+          type="number"
+          value={Number.isFinite(value) ? value : 0}
+          step={step}
+          min="0"
+          onChange={(event) => onChange(n(event.target.value))}
+          className="h-11 min-w-0 flex-1 bg-transparent px-3 font-mono text-sm text-white outline-none"
+        />
+      </div>
+    </Field>
+  );
+}
+
+function PercentField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <NumberField
+      label={label}
+      value={Number((value * 100).toFixed(3))}
+      onChange={(next) => onChange(next / 100)}
+      prefix="%"
+      step="0.1"
+    />
+  );
+}
+
+function ProgressLine({ label, value, tone }: { label: string; value: number; tone: "cyan" | "lime" | "rose" | "violet" }) {
+  const colors = {
+    cyan: "bg-cyan-300",
+    lime: "bg-lime-300",
+    rose: "bg-rose-300",
+    violet: "bg-violet-300",
+  };
+  const width = `${Math.max(0, Math.min(100, value * 100))}%`;
+  return (
+    <div className="border border-white/10 bg-white/[0.03] p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-sm text-zinc-400">{label}</p>
+        <p className="font-mono text-sm font-bold text-white">{percent(value)}</p>
+      </div>
+      <div className="h-2 bg-white/10">
+        <div className={`h-full ${colors[tone]}`} style={{ width }} />
+      </div>
+    </div>
+  );
+}
+
+function fundedTone(status: string): "cyan" | "lime" | "rose" | "amber" | "violet" {
+  if (status.includes("hard") || status.includes("breach")) return "rose";
+  if (status.includes("defensive") || status.includes("caution") || status.includes("ready")) return "amber";
+  if (status.includes("passed") || status.includes("normal")) return "lime";
+  return "cyan";
 }
 
 function Metric({

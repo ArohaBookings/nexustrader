@@ -59,6 +59,22 @@ export type BotSnapshotInput = z.infer<typeof botSnapshotSchema>;
 export type SymbolSnapshotInput = z.infer<typeof symbolSnapshotSchema>;
 export type EventInput = z.infer<typeof eventSchema>;
 
+export const fundedConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  group: z.string().min(1).default("custom"),
+  phase: z.string().min(1).default("evaluation"),
+  startingBalance: z.number().positive().default(100),
+  profitTargetPct: z.number().min(0).max(5).default(0.08),
+  dailyDrawdownPct: z.number().min(0).max(1).default(0.05),
+  maxDrawdownPct: z.number().min(0).max(1).default(0.10),
+  trailingDrawdown: z.boolean().default(false),
+  baseRiskPct: z.number().min(0).max(0.05).default(0.005),
+  maxOpenRiskPct: z.number().min(0).max(0.20).default(0.015),
+  dailyResetTimezone: z.string().min(1).default("Australia/Sydney"),
+});
+
+export type FundedConfigInput = z.infer<typeof fundedConfigSchema>;
+
 export const telegramUpdateSchema = z.object({
   update_id: z.number().optional(),
   message: z

@@ -150,3 +150,28 @@ export const janitorRuns = pgTable("janitor_runs", {
   status: text("status").notNull().default("ok"),
   payload: jsonb("payload").notNull().default({}),
 });
+
+export const fundedConfigs = pgTable(
+  "funded_configs",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull().default("default"),
+    enabled: boolean("enabled").notNull().default(false),
+    group: text("group").notNull().default("custom"),
+    phase: text("phase").notNull().default("evaluation"),
+    startingBalance: numeric("starting_balance", { precision: 18, scale: 6 }).notNull().default("100"),
+    profitTargetPct: numeric("profit_target_pct", { precision: 12, scale: 8 }).notNull().default("0.08"),
+    dailyDrawdownPct: numeric("daily_drawdown_pct", { precision: 12, scale: 8 }).notNull().default("0.05"),
+    maxDrawdownPct: numeric("max_drawdown_pct", { precision: 12, scale: 8 }).notNull().default("0.10"),
+    trailingDrawdown: boolean("trailing_drawdown").notNull().default(false),
+    baseRiskPct: numeric("base_risk_pct", { precision: 12, scale: 8 }).notNull().default("0.005"),
+    maxOpenRiskPct: numeric("max_open_risk_pct", { precision: 12, scale: 8 }).notNull().default("0.015"),
+    dailyResetTimezone: text("daily_reset_timezone").notNull().default("Australia/Sydney"),
+    payload: jsonb("payload").notNull().default({}),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    fundedConfigsNameUnique: uniqueIndex("funded_configs_name_unique").on(table.name),
+  }),
+);

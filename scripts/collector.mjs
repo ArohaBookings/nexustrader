@@ -86,7 +86,15 @@ function toIngest({ health, stats, dashboard }) {
       session: textFrom(stats.session, dashboard.session, runtime.session),
       killState: textFrom(String(control.kill_switch ?? ""), dashboard.kill_state, health.status),
       openRiskPct: numberFrom(stats.open_risk_pct, dashboard.open_risk_pct, runtime.open_risk_pct),
-      payload: { health, stats, dashboard_summary: dashboard.summary || dashboard.status || null, control },
+      payload: {
+        health,
+        stats,
+        dashboard_summary: dashboard.summary || dashboard.status || null,
+        control,
+        mt5_account: record(stats.latest_account_snapshot || account),
+        account_scaling: record(stats.account_scaling),
+        risk_state: record(stats.risk_state),
+      },
     },
     symbols: pairs.map((pair) => ({
       symbol: String(pair.symbol || pair.name || pair.pair || "UNKNOWN").toUpperCase(),
@@ -134,4 +142,3 @@ setInterval(() => {
     console.error(`[collector] ${new Date().toISOString()} ${error.stack || error.message || error}`);
   });
 }, intervalMs);
-
