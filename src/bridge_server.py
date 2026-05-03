@@ -10604,6 +10604,34 @@ def create_bridge_app(
             "trade_count": int(len(closed_rows)),
         }
 
+    def _snapshot_optional_bool(snapshot: dict[str, Any] | None, key: str) -> bool | None:
+        if not isinstance(snapshot, dict):
+            return None
+        value = snapshot.get(key)
+        if value is None or value == "":
+            return None
+        if isinstance(value, bool):
+            return bool(value)
+        if isinstance(value, (int, float)):
+            return bool(int(value))
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+        if text in {"0", "false", "no", "n", "off"}:
+            return False
+        return None
+
+    def _snapshot_age_seconds(snapshot: dict[str, Any] | None) -> float | None:
+        if not isinstance(snapshot, dict):
+            return None
+        updated_at = str(snapshot.get("updated_at") or "").strip()
+        if not updated_at:
+            return None
+        try:
+            return max(0.0, (utc_now() - _parse_iso(updated_at)).total_seconds())
+        except Exception:
+            return None
+
     @app.get("/health")
     def health(request: StarletteRequest) -> dict[str, Any]:
         if bool(dashboard_policy.public_enabled) and not bool(dashboard_policy.allow_public_health):
@@ -10695,6 +10723,28 @@ def create_bridge_app(
             for value in symbol_state_snapshot.values()
             if isinstance(value, dict) and str(value.get("last_block_reason") or "").strip()
         )
+        active_snapshot_age_seconds = _snapshot_age_seconds(active_snapshot if isinstance(active_snapshot, dict) else None)
+        freshness_limit_seconds = max(90.0, float(getattr(policy, "reality_sync_stale_seconds", 90.0) or 90.0))
+        ea_polling_fresh = bool(
+            active_account
+            and int(active_magic or 0) > 0
+            and active_snapshot_age_seconds is not None
+            and active_snapshot_age_seconds <= freshness_limit_seconds
+        )
+        terminal_connected_flag = _snapshot_optional_bool(active_snapshot if isinstance(active_snapshot, dict) else None, "terminal_connected")
+        terminal_trade_allowed_flag = _snapshot_optional_bool(active_snapshot if isinstance(active_snapshot, dict) else None, "terminal_trade_allowed")
+        mql_trade_allowed_flag = _snapshot_optional_bool(active_snapshot if isinstance(active_snapshot, dict) else None, "mql_trade_allowed")
+        explicit_permission_flags = any(
+            value is not None
+            for value in (terminal_connected_flag, terminal_trade_allowed_flag, mql_trade_allowed_flag)
+        )
+        terminal_connected_effective = terminal_connected_flag if terminal_connected_flag is not None else ea_polling_fresh
+        mql_trade_allowed_effective = mql_trade_allowed_flag if mql_trade_allowed_flag is not None else ea_polling_fresh
+        trade_permission_confirmed = bool(
+            terminal_connected_flag is True
+            and terminal_trade_allowed_flag is True
+            and (mql_trade_allowed_flag is True or mql_trade_allowed_flag is None)
+        )
         learning_status = online_learning.status_snapshot()
         learning_brain_status = learning_brain.status_snapshot() if learning_brain is not None else {}
         current_rollout_stats = _current_rollout_stats_payload(account=active_account, magic=active_magic)
@@ -10709,9 +10759,14 @@ def create_bridge_app(
             "broker_connectivity": {
                 "account": active_account,
                 "magic": int(active_magic or 0),
-                "terminal_connected": bool((active_snapshot or {}).get("terminal_connected")) if isinstance(active_snapshot, dict) else None,
-                "terminal_trade_allowed": bool((active_snapshot or {}).get("terminal_trade_allowed")) if isinstance(active_snapshot, dict) else None,
-                "mql_trade_allowed": bool((active_snapshot or {}).get("mql_trade_allowed")) if isinstance(active_snapshot, dict) else None,
+                "terminal_connected": terminal_connected_effective,
+                "terminal_trade_allowed": terminal_trade_allowed_flag,
+                "mql_trade_allowed": mql_trade_allowed_effective,
+                "explicit_permission_flags": explicit_permission_flags,
+                "trade_permission_confirmed": trade_permission_confirmed,
+                "ea_polling_fresh": ea_polling_fresh,
+                "last_poll_age_seconds": active_snapshot_age_seconds,
+                "permission_source": "explicit_flags" if explicit_permission_flags else "legacy_ea_poll",
             },
             "news_engine_status": {
                 "mode": str(policy.news_mode),

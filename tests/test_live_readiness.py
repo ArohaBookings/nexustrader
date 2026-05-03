@@ -51,6 +51,44 @@ def test_live_readiness_ready_when_all_hard_gates_pass() -> None:
     assert report["hard_blocker_count"] == 0
 
 
+def test_live_readiness_accepts_fresh_legacy_ea_polling_with_warning() -> None:
+    env = {
+        "TELEGRAM_BOT_TOKEN": "set",
+        "TELEGRAM_CHAT_ID": "123",
+        "TELEGRAM_WEBHOOK_SECRET": "secret",
+        "OPENAI_API_KEY": "set",
+        "FINNHUB_API_KEY": "set",
+        "VERCEL_TOKEN": "set",
+    }
+    report = build_live_readiness_report(
+        project_root=Path("/tmp/apex"),
+        settings_raw=_settings(),
+        env=env,
+        command_exists=lambda command: True,
+        git_probe={"is_repo": True, "remote": "git@github.com:ArohaBookings/nexustrader.git", "branch": "main", "upstream": "origin/main"},
+        gh_auth_probe={"ok": True},
+        vercel_probe={"ok": True, "project_linked": True, "token_present": True},
+        mt5_verification={"ok": True, "account": {"login": 1}, "version": "5"},
+        bridge_health={
+            "ok": True,
+            "bridge_status": "UP",
+            "broker_connectivity": {
+                "terminal_connected": True,
+                "terminal_trade_allowed": None,
+                "mql_trade_allowed": True,
+                "ea_polling_fresh": True,
+                "explicit_permission_flags": False,
+                "account": "1",
+            },
+        },
+        telegram_identity={"ok": True, "username": "Nexus_vantage_trader_bot", "is_bot": True},
+    )
+
+    assert report["ready"] is True
+    assert "bridge_mt5_feed" not in {item["name"] for item in report["hard_blockers"]}
+    assert "bridge_mt5_permission_flags" in {item["name"] for item in report["warnings"]}
+
+
 def test_live_readiness_blocks_missing_runtime_and_credentials() -> None:
     report = build_live_readiness_report(
         project_root=Path("/tmp/apex"),

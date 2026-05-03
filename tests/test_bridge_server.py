@@ -1064,6 +1064,43 @@ class BridgeCloseReportTests(unittest.TestCase):
             self.assertIn("current_rollout_stats", payload)
             self.assertEqual(root_response.status_code, 404)
 
+    def test_health_marks_legacy_ea_polling_as_fresh_mt5_listener(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            queue = BridgeActionQueue(db_path=root / "bridge.sqlite", ttl_seconds=10)
+            journal = TradeJournal(root / "trades.sqlite")
+            online = OnlineLearningEngine(
+                data_path=root / "trades.csv",
+                model_path=root / "online_model.pkl",
+                min_retrain_trades=1,
+            )
+            app = create_bridge_app(queue=queue, journal=journal, online_learning=online, auth_token="")
+            client = TestClient(app)
+
+            pull = client.get(
+                "/v1/pull",
+                params={
+                    "symbol": "BTCUSD",
+                    "account": "26919404",
+                    "magic": 20260304,
+                    "timeframe": "M5",
+                    "balance": 100.0,
+                    "equity": 101.0,
+                    "free_margin": 99.0,
+                },
+            )
+            self.assertEqual(pull.status_code, 200)
+
+            payload = client.get("/health").json()
+            broker = payload.get("broker_connectivity", {})
+            self.assertEqual(broker.get("account"), "26919404")
+            self.assertTrue(broker.get("ea_polling_fresh"))
+            self.assertTrue(broker.get("terminal_connected"))
+            self.assertTrue(broker.get("mql_trade_allowed"))
+            self.assertFalse(broker.get("explicit_permission_flags"))
+            self.assertEqual(broker.get("permission_source"), "legacy_ea_poll")
+            self.assertIsNone(broker.get("terminal_trade_allowed"))
+
     def test_health_uses_risk_config_daily_thresholds(self) -> None:
         with TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

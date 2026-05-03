@@ -274,6 +274,12 @@ def build_live_readiness_report(
 
     bridge_payload = dict(bridge_health or {})
     broker = bridge_payload.get("broker_connectivity") if isinstance(bridge_payload.get("broker_connectivity"), Mapping) else {}
+    broker_terminal_connected = bool(broker.get("terminal_connected")) if isinstance(broker, Mapping) else False
+    broker_trade_allowed = bool(broker.get("terminal_trade_allowed")) if isinstance(broker, Mapping) else False
+    broker_mql_allowed = bool(broker.get("mql_trade_allowed")) if isinstance(broker, Mapping) else False
+    broker_polling_fresh = bool(broker.get("ea_polling_fresh")) if isinstance(broker, Mapping) else False
+    broker_explicit_flags = bool(broker.get("explicit_permission_flags")) if isinstance(broker, Mapping) else False
+    broker_trade_confirmed = bool(broker.get("trade_permission_confirmed")) if isinstance(broker, Mapping) else False
     checks.append(
         _check(
             "bridge_health",
@@ -282,22 +288,44 @@ def build_live_readiness_report(
             hard=True,
             details={
                 "bridge_status": bridge_payload.get("bridge_status"),
-                "terminal_connected": bool(broker.get("terminal_connected")) if isinstance(broker, Mapping) else False,
+                "terminal_connected": broker_terminal_connected,
+                "ea_polling_fresh": broker_polling_fresh,
                 "account": broker.get("account") if isinstance(broker, Mapping) else "",
             },
         )
     )
+    bridge_feed_ok = bool(broker_trade_confirmed or broker_polling_fresh or (broker_terminal_connected and broker_trade_allowed))
+    if broker_trade_confirmed:
+        bridge_feed_summary = "Bridge is receiving live MT5 terminal/trade-allowed state"
+    elif broker_polling_fresh:
+        bridge_feed_summary = "Bridge is receiving fresh live MT5 EA polling"
+    else:
+        bridge_feed_summary = "Bridge is not receiving live MT5 EA polling"
     checks.append(
         _check(
             "bridge_mt5_feed",
-            bool(broker.get("terminal_connected")) and bool(broker.get("terminal_trade_allowed")) if isinstance(broker, Mapping) else False,
-            "Bridge is receiving live MT5 terminal/trade-allowed state"
-            if isinstance(broker, Mapping) and bool(broker.get("terminal_connected")) and bool(broker.get("terminal_trade_allowed"))
-            else "Bridge is not receiving live MT5 trade-allowed state",
+            bridge_feed_ok,
+            bridge_feed_summary,
             hard=True,
             details=dict(broker) if isinstance(broker, Mapping) else {},
         )
     )
+    if bridge_feed_ok and not broker_explicit_flags:
+        checks.append(
+            _warn(
+                "bridge_mt5_permission_flags",
+                "MT5 EA is polling, but explicit terminal/trade permission flags are missing; recompile and reattach the updated EA for full telemetry.",
+                details=dict(broker) if isinstance(broker, Mapping) else {},
+            )
+        )
+    elif bridge_feed_ok and broker_explicit_flags and not (broker_trade_allowed and broker_mql_allowed):
+        checks.append(
+            _warn(
+                "bridge_mt5_trade_permissions",
+                "MT5 EA is polling, but trade permission flags are not all true.",
+                details=dict(broker) if isinstance(broker, Mapping) else {},
+            )
+        )
 
     identity = dict(telegram_identity or {})
     checks.append(
