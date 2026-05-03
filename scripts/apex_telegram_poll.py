@@ -24,6 +24,7 @@ BOT_COMMANDS = [
     {"command": "funded", "description": "Funded account guardrails"},
     {"command": "risk", "description": "Risk and circuit breakers"},
     {"command": "trades", "description": "Recent trades and orders"},
+    {"command": "aggression", "description": "Live aggression tier and unlock flow"},
     {"command": "apex", "description": "Bot diagnostics and scaling state"},
     {"command": "pause", "description": "Pause trading"},
     {"command": "resume", "description": "Resume trading with confirmation"},

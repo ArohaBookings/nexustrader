@@ -14,6 +14,7 @@ def test_local_telegram_polling_sidecar_forwards_updates_to_bridge_webhook() -> 
     assert "get_updates" in script
     assert "delete_webhook(drop_pending_updates=False)" in script
     assert "set_my_commands(BOT_COMMANDS)" in script
+    assert '"command": "aggression"' in script
 
 
 def test_local_telegram_polling_sidecar_can_claim_owner_chat_id() -> None:

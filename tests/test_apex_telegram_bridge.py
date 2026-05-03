@@ -30,7 +30,7 @@ class _FakeTelegramClient:
         return {"message_id": len(self.sent)}
 
 
-def _make_app(root: Path, *, telegram_config: dict | None = None):
+def _make_app(root: Path, *, telegram_config: dict | None = None, aggression_config: dict | None = None):
     queue = BridgeActionQueue(db_path=root / "bridge.sqlite", ttl_seconds=10)
     journal = TradeJournal(root / "trades.sqlite")
     online = OnlineLearningEngine(
@@ -45,6 +45,7 @@ def _make_app(root: Path, *, telegram_config: dict | None = None):
         auth_token="",
         dashboard_config={"enabled": True, "password": "test-pass", "session_secret": "test-secret"},
         telegram_config=telegram_config or {"enabled": True, "allow_controls": True, "ai_enabled": False},
+        aggression_config=aggression_config,
         risk_config={"funded": {"enabled": True, "starting_balance": 100.0}},
     )
 
@@ -138,6 +139,52 @@ def test_telegram_webhook_blocks_non_owner_controls() -> None:
             assert "locked to the configured owner chat" in fake.sent[-1]["text"]
             health = client.get("/health").json()
             assert health["operator_control_state"]["pause_trading"] is False
+
+
+def test_telegram_aggression_unlock_requires_owner_confirmation() -> None:
+    if not _HAS_FASTAPI:
+        return
+    with TemporaryDirectory() as tmp_dir:
+        root = Path(tmp_dir)
+        fake = _FakeTelegramClient()
+        env = {
+            **os.environ,
+            "TELEGRAM_WEBHOOK_SECRET": "secret",
+            "TELEGRAM_CHAT_ID": "123",
+        }
+        with patch.dict(os.environ, env, clear=True), patch("src.bridge_server.telegram_client_from_env", return_value=fake):
+            client = TestClient(
+                _make_app(
+                    root,
+                    aggression_config={
+                        "enabled": True,
+                        "owner_unlock_required": True,
+                        "state_file": str(root / "aggression_state.json"),
+                    },
+                )
+            )
+            request_unlock = client.post(
+                "/telegram/webhook",
+                headers={"x-telegram-bot-api-secret-token": "secret"},
+                json={"update_id": 1, "message": {"chat": {"id": 123}, "from": {"id": 123}, "text": "/aggression unlock"}},
+            )
+            assert request_unlock.status_code == 200
+            assert request_unlock.json()["action"] == "unlock_aggression"
+            assert request_unlock.json()["confirmation_required"] is True
+            assert "Confirmation required" in fake.sent[-1]["text"]
+            match = re.search(r"/confirm\s+(tg_\d+)", fake.sent[-1]["text"])
+            assert match is not None
+
+            confirm = client.post(
+                "/telegram/webhook",
+                headers={"x-telegram-bot-api-secret-token": "secret"},
+                json={"update_id": 2, "message": {"chat": {"id": 123}, "from": {"id": 123}, "text": f"/confirm {match.group(1)}"}},
+            )
+            assert confirm.status_code == 200
+            assert confirm.json()["action"] == "unlock_aggression"
+            assert "Executed" in fake.sent[-1]["text"]
+            health = client.get("/health").json()
+            assert health["aggression_controller"]["owner_unlocked"] is True
 
 
 def test_telegram_confirmations_expire() -> None:

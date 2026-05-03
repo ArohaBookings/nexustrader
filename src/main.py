@@ -1610,6 +1610,7 @@ def build_runtime(force_mt5: bool = False, skip_mt5: bool = False):
         log_file=settings.runtime_paths.logs_dir / "apex.log",
         rotate_max_bytes=int(logging_config.get("rotate_max_bytes", 10 * 1024 * 1024)),
         rotate_backup_count=int(logging_config.get("rotate_backup_count", 7)),
+        retention_days=int(logging_config.get("retention_days", 365)),
     ).build()
     isolated_runtime_root: Path | None = None
     if skip_mt5:
@@ -8703,6 +8704,7 @@ def run_bot(
                 market_data_status_provider=market_data.status_snapshot,
                 runtime_metrics_provider=lambda: {key: dict(value) for key, value in symbol_runtime_metrics.items()},
                 telegram_config=settings.raw.get("telegram", {}) if isinstance(settings.raw.get("telegram"), dict) else {},
+                aggression_config=settings.raw.get("aggression_controller", {}) if isinstance(settings.raw.get("aggression_controller"), dict) else {},
             )
         except Exception as exc:
             logger.warning(f"Bridge server start failed: {exc}")
@@ -15490,6 +15492,7 @@ def run_verify() -> int:
         log_file=settings.runtime_paths.logs_dir / "apex.log",
         rotate_max_bytes=int(logging_config.get("rotate_max_bytes", 10 * 1024 * 1024)),
         rotate_backup_count=int(logging_config.get("rotate_backup_count", 7)),
+        retention_days=int(logging_config.get("retention_days", 365)),
     ).build()
     system_config = settings.section("system")
     configured_symbols = settings.symbols()
@@ -15571,6 +15574,7 @@ def run_bridge_only() -> int:
         market_data_status_provider=runtime["market_data"].status_snapshot,
         runtime_metrics_provider=lambda: {},
         telegram_config=runtime["settings"].raw.get("telegram", {}) if isinstance(runtime["settings"].raw.get("telegram"), dict) else {},
+        aggression_config=runtime["settings"].raw.get("aggression_controller", {}) if isinstance(runtime["settings"].raw.get("aggression_controller"), dict) else {},
     )
     return 0
 

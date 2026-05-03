@@ -32,6 +32,7 @@ from src.apex_telegram import (
     owner_chat_id_from_env,
     telegram_config_from_mapping,
 )
+from src.aggression_controller import LiveAggressionController
 from src.bridge_stop_validation import (
     SymbolRule,
     StopValidationInput,
@@ -650,6 +651,42 @@ def _bridge_account_scaling_summary(
         if isinstance(runtime.get(key), Mapping) and runtime.get(key):
             fallback[key] = dict(runtime.get(key) or {})
     return fallback
+
+
+def _aggression_hard_blockers(
+    *,
+    health: Mapping[str, Any] | None = None,
+    broker: Mapping[str, Any] | None = None,
+    operator: Mapping[str, Any] | None = None,
+    daily_state: str = "",
+    stale_poll_warning: bool = False,
+) -> list[str]:
+    payload = dict(health or {})
+    broker_payload = dict(broker or payload.get("broker_connectivity") or {})
+    operator_payload = dict(operator or payload.get("operator_control_state") or {})
+    blockers: list[str] = []
+    kill_state = dict(payload.get("current_kill_state") or {})
+    if str(kill_state.get("state") or "").upper() in {"HARD", "MANAGE_ONLY"}:
+        blockers.append(f"kill_state_{str(kill_state.get('state') or '').lower()}")
+    if bool(operator_payload.get("kill_switch")):
+        blockers.append("operator_kill_switch")
+    if bool(operator_payload.get("pause_trading")):
+        blockers.append("operator_pause_trading")
+    state = str(daily_state or payload.get("current_daily_state") or "").upper()
+    if state in {"DAILY_HARD_STOP", "DAILY_DEFENSIVE"}:
+        blockers.append(f"daily_guard_{state.lower()}")
+    if bool(stale_poll_warning or payload.get("stale_poll_warning")):
+        blockers.append("stale_mt5_poll")
+    if broker_payload:
+        if broker_payload.get("ea_polling_fresh") is False:
+            blockers.append("ea_polling_not_fresh")
+        if broker_payload.get("terminal_connected") is False:
+            blockers.append("mt5_terminal_disconnected")
+        if broker_payload.get("mql_trade_allowed") is False:
+            blockers.append("mql_trade_not_allowed")
+        if broker_payload.get("terminal_trade_allowed") is False:
+            blockers.append("terminal_trade_not_allowed")
+    return blockers
 
 
 def _blocker_entry(
@@ -4723,6 +4760,7 @@ def create_bridge_app(
     runtime_metrics_provider: Any | None = None,
     strategy_optimizer: StrategyOptimizer | None = None,
     telegram_config: dict[str, Any] | None = None,
+    aggression_config: dict[str, Any] | None = None,
 ):
     global _SHARED_OPERATOR_CONTROL_STATE, _SHARED_STARTUP_RUNTIME_STATE
     from fastapi import FastAPI, Header, HTTPException, Request
@@ -4736,6 +4774,12 @@ def create_bridge_app(
         default_port=8000,
     )
     telegram_policy = telegram_config_from_mapping(telegram_config if isinstance(telegram_config, dict) else {})
+    aggression_controller = LiveAggressionController.from_mapping(
+        aggression_config if isinstance(aggression_config, dict) else {},
+        project_root=Path.cwd(),
+    )
+    if bool(aggression_controller.config.enabled):
+        aggression_controller.note_restart()
     execution_policy = _build_execution_startup_policy(execution_config)
     risk_payload = risk_config if isinstance(risk_config, dict) else {}
     xau_grid_payload = xau_grid_config if isinstance(xau_grid_config, dict) else {}
@@ -5725,6 +5769,8 @@ def create_bridge_app(
             "training_bootstrap_status": dict(_record_for_telegram(dashboard_data.get("training_bootstrap_status"))),
             "data_quality": dict(_record_for_telegram(dashboard_data.get("data_quality"))),
             "promotion_audit": dict(_record_for_telegram(dashboard_data.get("promotion_audit"))),
+            "aggression_controller": dict(_record_for_telegram(dashboard_data.get("aggression_controller"))),
+            "live_evidence": dict(_record_for_telegram(dashboard_data.get("live_evidence"))),
             "live_shadow_gap": dict(_record_for_telegram(dashboard_data.get("live_shadow_gap"))),
             "xau_btc_opportunity_pipeline": dict(_record_for_telegram(dashboard_data.get("xau_btc_opportunity_pipeline"))),
             "top_symbols": list(dashboard_data.get("symbols") or [])[:12],
@@ -5739,7 +5785,7 @@ def create_bridge_app(
 
     def _telegram_control_execute(action: str, *, source: str = "telegram") -> dict[str, Any]:
         action_value = str(action or "").strip()
-        if action_value not in {"pause_trading", "resume_trading", "kill_switch", "refresh_state"}:
+        if action_value not in {"pause_trading", "resume_trading", "kill_switch", "refresh_state", "unlock_aggression"}:
             return {"ok": False, "reason": "unsupported_action", "action": action_value}
         if action_value == "pause_trading":
             operator_control_state.update(
@@ -5778,6 +5824,25 @@ def create_bridge_app(
             startup_runtime_state["last_refresh_at"] = _iso_now()
             _record_dashboard_event("telegram_refresh_state", reason=f"{source}_refresh_state")
             _log(logger, "info", "telegram_control_action", action=action_value, state=dict(operator_control_state))
+        elif action_value == "unlock_aggression":
+            snapshot = aggression_controller.unlock(source=source)
+            _record_dashboard_event(
+                "telegram_unlock_aggression",
+                reason=f"{source}_unlock_aggression",
+                extra={
+                    "tier": str(snapshot.get("tier") or ""),
+                    "cap": int(snapshot.get("cap") or 0),
+                    "bucket_minutes": int(snapshot.get("bucket_minutes") or 0),
+                },
+            )
+            _log(
+                logger,
+                "warning",
+                "telegram_control_action",
+                action=action_value,
+                aggression_controller=snapshot,
+            )
+            return {"ok": True, "action": action_value, "aggression_controller": snapshot}
         return {"ok": True, "action": action_value, "control_state": _operator_control_status()}
 
     def _normalize_grid_block_reason(reason: str) -> str:
@@ -10862,6 +10927,29 @@ def create_bridge_app(
         learning_status = online_learning.status_snapshot()
         learning_brain_status = learning_brain.status_snapshot() if learning_brain is not None else {}
         current_rollout_stats = _current_rollout_stats_payload(account=active_account, magic=active_magic)
+        broker_connectivity = {
+            "account": active_account,
+            "magic": int(active_magic or 0),
+            "terminal_connected": terminal_connected_effective,
+            "terminal_trade_allowed": terminal_trade_allowed_flag,
+            "mql_trade_allowed": mql_trade_allowed_effective,
+            "explicit_permission_flags": explicit_permission_flags,
+            "trade_permission_confirmed": trade_permission_confirmed,
+            "ea_polling_fresh": ea_polling_fresh,
+            "last_poll_age_seconds": active_snapshot_age_seconds,
+            "permission_source": "explicit_flags" if explicit_permission_flags else "legacy_ea_poll",
+        }
+        hard_blockers = _aggression_hard_blockers(
+            broker=broker_connectivity,
+            operator=control_state,
+            daily_state=str(daily_state_name),
+            stale_poll_warning=bool(stale_poll_warning),
+        )
+        aggression_snapshot = aggression_controller.snapshot(
+            evidence=current_rollout_stats,
+            equity=float(current_equity or 0.0),
+            hard_blockers=hard_blockers,
+        )
         return {
             "ok": True,
             "time": _iso_now(),
@@ -10870,18 +10958,7 @@ def create_bridge_app(
             "current_session_name": _session_name_utc(utc_now()),
             "bridge_status": "UP",
             "bridge_singleton_status": dict(_SHARED_BRIDGE_RUNTIME_STATE),
-            "broker_connectivity": {
-                "account": active_account,
-                "magic": int(active_magic or 0),
-                "terminal_connected": terminal_connected_effective,
-                "terminal_trade_allowed": terminal_trade_allowed_flag,
-                "mql_trade_allowed": mql_trade_allowed_effective,
-                "explicit_permission_flags": explicit_permission_flags,
-                "trade_permission_confirmed": trade_permission_confirmed,
-                "ea_polling_fresh": ea_polling_fresh,
-                "last_poll_age_seconds": active_snapshot_age_seconds,
-                "permission_source": "explicit_flags" if explicit_permission_flags else "legacy_ea_poll",
-            },
+            "broker_connectivity": broker_connectivity,
             "news_engine_status": {
                 "mode": str(policy.news_mode),
                 "last_state": next(
@@ -10937,6 +11014,9 @@ def create_bridge_app(
             "online_learning": learning_status,
             "learning_brain": learning_brain_status,
             "current_rollout_stats": current_rollout_stats,
+            "aggression_controller": aggression_snapshot,
+            "live_evidence": aggression_snapshot.get("live_evidence", {}),
+            "why_not_full_aggression": list(aggression_snapshot.get("why_not_full_aggression", [])),
             "maintenance_runtime": dict(maintenance_runtime_state),
             "trading_day_key_now": str(getattr(risk_state, "trading_day_key", "") or ""),
             "closed_trades_today": int(getattr(risk_state, "trades_today", 0) or 0),
@@ -11322,6 +11402,25 @@ def create_bridge_app(
                 hard_stop_threshold_pct=float(policy.daily_hard_stop_threshold_pct),
             )[1]
         )
+        broker_connectivity_for_aggression = {
+            "account": active_account,
+            "magic": int(active_magic or 0),
+            "terminal_connected": _snapshot_optional_bool(active_snapshot if isinstance(active_snapshot, dict) else None, "terminal_connected"),
+            "terminal_trade_allowed": _snapshot_optional_bool(active_snapshot if isinstance(active_snapshot, dict) else None, "terminal_trade_allowed"),
+            "mql_trade_allowed": _snapshot_optional_bool(active_snapshot if isinstance(active_snapshot, dict) else None, "mql_trade_allowed"),
+            "ea_polling_fresh": _snapshot_age_seconds(active_snapshot if isinstance(active_snapshot, dict) else None) is not None
+            and float(_snapshot_age_seconds(active_snapshot if isinstance(active_snapshot, dict) else None) or 999999.0) <= max(90.0, float(getattr(policy, "reality_sync_stale_seconds", 90.0) or 90.0)),
+        }
+        aggression_hard_blockers = _aggression_hard_blockers(
+            broker=broker_connectivity_for_aggression,
+            operator=_operator_control_status(),
+            daily_state=current_daily_state,
+        )
+        aggression_snapshot = aggression_controller.snapshot(
+            evidence=current_rollout_stats,
+            equity=float(account_scaling_summary.get("equity") or 0.0),
+            hard_blockers=aggression_hard_blockers,
+        )
         return {
             "ok": True,
             "time": _iso_now(),
@@ -11386,6 +11485,9 @@ def create_bridge_app(
             "recent_trade_learning": journal.recent_review_summary(limit=50, account=active_account, magic=active_magic),
             "symbol_training_mode": dict(symbol_training_state),
             "account_scaling": account_scaling_summary,
+            "aggression_controller": aggression_snapshot,
+            "live_evidence": aggression_snapshot.get("live_evidence", {}),
+            "why_not_full_aggression": list(aggression_snapshot.get("why_not_full_aggression", [])),
             "latest_account_snapshot": active_snapshot if isinstance(active_snapshot, dict) else queue.latest_account_snapshot(),
             "recent_account_snapshots": queue.recent_account_snapshots(limit=20),
             "active_account_snapshots": queue.recent_account_snapshots(limit=20, account=active_account, magic=active_magic)
@@ -14496,6 +14598,9 @@ def create_bridge_app(
                 "session_priority_diagnostics": session_priority_diagnostics,
                 "trading_day_debug": stats_payload.get("trading_day_debug", {}),
                 "native_candidate_to_execution_summary": stats_payload.get("native_candidate_to_execution_summary", {}),
+                "aggression_controller": stats_payload.get("aggression_controller", health_payload.get("aggression_controller", {})),
+                "live_evidence": stats_payload.get("live_evidence", health_payload.get("live_evidence", {})),
+                "why_not_full_aggression": stats_payload.get("why_not_full_aggression", health_payload.get("why_not_full_aggression", [])),
                 "top_earning_pairs_today": pair_day_scoreboard.get("top_earning_pairs_today", []),
                 "top_losing_pairs_today": pair_day_scoreboard.get("top_losing_pairs_today", []),
             },
@@ -14520,6 +14625,9 @@ def create_bridge_app(
             "data_quality": edge_apex_payload.get("data_quality", {}),
             "self_repair": edge_apex_payload.get("self_repair", {}),
             "promotion_audit": edge_apex_payload.get("promotion_audit", {}),
+            "aggression_controller": stats_payload.get("aggression_controller", health_payload.get("aggression_controller", {})),
+            "live_evidence": stats_payload.get("live_evidence", health_payload.get("live_evidence", {})),
+            "why_not_full_aggression": stats_payload.get("why_not_full_aggression", health_payload.get("why_not_full_aggression", [])),
             "funded_mission": edge_apex_payload.get("funded_mission", {}),
             "trajectory_forecast": edge_apex_payload.get("trajectory_forecast", {}),
             "xau_btc_opportunity_pipeline": edge_apex_payload.get("xau_btc_opportunity_pipeline", {}),
@@ -14674,10 +14782,12 @@ def create_bridge_app(
     }
     function renderTabs(){const wrap=document.getElementById("tabs"); wrap.innerHTML=tabs.map((tab,i)=>`<button class="tab ${i===0?'active':''}" data-tab="${tab}">${tab}</button>`).join(""); wrap.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>activateTab(btn.dataset.tab));}
     function activateTab(tab){document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab)); document.querySelectorAll('.section').forEach(el=>el.classList.toggle('active',el.id===`section-${tab}`));}
-    function renderSummary(data){const h=data.health||{}; const s=data.summary||{}; const broker=h.broker_connectivity||{}; const snapshot=(data.stats&&data.stats.latest_account_snapshot)||{}; document.getElementById("summary").innerHTML=[
+    function renderSummary(data){const h=data.health||{}; const s=data.summary||{}; const broker=h.broker_connectivity||{}; const snapshot=(data.stats&&data.stats.latest_account_snapshot)||{}; const ag=data.aggression_controller||s.aggression_controller||{}; document.getElementById("summary").innerHTML=[
       mkMetric("Bridge",h.bridge_status||s.bridge_status||""),
       mkMetric("Apex Grade",`${Number((data.institutional_apex||{}).grade_pct||0).toFixed(1)}%`),
       mkMetric("Apex Ready",(data.institutional_apex||{}).readiness||""),
+      mkMetric("Aggression",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'UNLOCKED':'LOCKED'}`),
+      mkMetric("2h Entries",`${Number(ag.used||0).toFixed(0)}/${Number(ag.cap||0).toFixed(0)}`),
       mkMetric("Broker",broker.terminal_connected?"CONNECTED":"DISCONNECTED"),
       mkMetric("Session",s.current_session||h.current_session||""),
       mkMetric("Daily State",h.current_daily_state||s.current_daily_state||""),
@@ -14766,7 +14876,7 @@ def create_bridge_app(
     function renderApex(data){
       const target=document.getElementById("section-Apex"); if(!target) return;
       const apex=data.institutional_apex||{}; const funded=apex.funded_mission||{}; const account=funded.account||{}; const mt5=apex.mt5_bridge||{}; const mastery=apex.market_mastery||{}; const dims=mastery.dimensions||{}; const fusion=apex.data_fusion||{}; const anti=apex.anti_overfit||{}; const repair=apex.self_repair||{}; const scaling=apex.scaling||{}; const exec=apex.execution||{};
-      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[];
+      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[]; const ag=data.aggression_controller||{}; const live=data.live_evidence||ag.live_evidence||{};
       const providers=(fusion.providers||[]);
       const topSymbols=(mastery.top_symbols||[]);
       const soft=(repair.soft_blockers||[]);
@@ -14794,9 +14904,13 @@ def create_bridge_app(
             ${mkMetric("Data quality",`${(Number(dataQuality.score||0)*100).toFixed(1)}%`)}
             ${mkMetric("Promotion",promotion.reason||anti.reason||'unknown')}
             ${mkMetric("Live-shadow",liveShadow.status||'collecting_or_aligned')}
+            ${mkMetric("Aggression tier",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'unlocked':'locked'}`)}
+            ${mkMetric("2h cap left",`${Number(ag.remaining||0).toFixed(0)} / ${Number(ag.cap||0).toFixed(0)}`)}
+            ${mkMetric("Live WR / Exp",`${(Number(live.win_rate||0)*100).toFixed(1)}% / ${Number(live.expectancy_r||0).toFixed(3)}R`)}
           </div>
           <div class="table" style="margin-top:12px">${priorityRows.map(item=>`<div class="item"><div class="row"><strong>${esc(item.symbol)}</strong><span class="pill ${bandCls(item.live_gate)}">${esc(item.live_gate||'edge_gated')}</span></div><div class="row"><span class="label">Shadow target / candidate debt</span><span class="value mono">${Number((item.shadow_target_10m||{}).low||0).toFixed(0)}-${Number((item.shadow_target_10m||{}).high||0).toFixed(0)} / ${Number(item.candidate_debt_10m||0).toFixed(0)}</span></div><div class="row"><span class="label">Live last 10m / action</span><span class="value">${Number(item.actual_live_trades_last_10m||0).toFixed(0)} / ${esc(item.recommended_action||'observe')}</span></div></div>`).join('') || '<div class="item">Waiting for priority BTC/XAU telemetry.</div>'}</div>
           <div class="sub" style="margin-top:10px">Live frequency is not forced. Shadow sampling and blocker diagnostics increase first; MT5 risk, funded, drawdown, spread, stale-data, and kill rails stay authoritative.</div>
+          <div class="sub" style="margin-top:8px">Full aggression blockers: ${esc((ag.why_not_full_aggression||data.why_not_full_aggression||[]).slice(0,6).join(', ')||'none')}</div>
         </div>
       </div>
       <div class="two-col">
@@ -15813,6 +15927,35 @@ def create_bridge_app(
             )
         selected_actions: list[tuple[float, str, str, dict[str, Any], str]] = []
         blocked_reasons: list[str] = []
+        pull_risk_state = _journal_stats_snapshot(
+            current_equity=current_equity,
+            account=account_id,
+            magic=int(magic),
+        )
+        pull_daily_state, _pull_daily_reason = RiskEngine.resolve_daily_state_from_stats(
+            pull_risk_state,
+            caution_threshold_pct=float(policy.daily_caution_threshold_pct),
+            defensive_threshold_pct=float(policy.daily_defensive_threshold_pct),
+            hard_stop_threshold_pct=float(policy.daily_hard_stop_threshold_pct),
+        )
+        account_snapshot_age_seconds = _snapshot_age_seconds(account_snapshot if isinstance(account_snapshot, dict) else None)
+        account_snapshot_fresh = (
+            account_snapshot_age_seconds is not None
+            and float(account_snapshot_age_seconds) <= max(90.0, float(getattr(policy, "reality_sync_stale_seconds", 90.0) or 90.0))
+        )
+        pull_aggression_hard_blockers = _aggression_hard_blockers(
+            broker={
+                "account": account_id,
+                "magic": int(magic),
+                "ea_polling_fresh": bool(account_snapshot_fresh),
+                "terminal_connected": _snapshot_optional_bool(account_snapshot if isinstance(account_snapshot, dict) else None, "terminal_connected"),
+                "terminal_trade_allowed": _snapshot_optional_bool(account_snapshot if isinstance(account_snapshot, dict) else None, "terminal_trade_allowed"),
+                "mql_trade_allowed": _snapshot_optional_bool(account_snapshot if isinstance(account_snapshot, dict) else None, "mql_trade_allowed"),
+            },
+            operator=_operator_control_status(),
+            daily_state=str(pull_daily_state),
+            stale_poll_warning=bool(account_snapshot_age_seconds is not None and float(account_snapshot_age_seconds) > max(90.0, float(policy.reality_sync_stale_seconds))),
+        )
 
         for row in candidates:
             action_type = str(row["action_type"] or "OPEN_MARKET").upper()
@@ -18566,6 +18709,59 @@ def create_bridge_app(
                 if len(actions) >= max_actions:
                     break
                 action_type = str(selected.get("action_type") or selected.get("action") or "OPEN_MARKET").upper()
+                delivered_symbol_key = _normalize_symbol_key(str(selected.get("symbol", symbol)))
+                aggression_reserved = False
+                if (not bool(policy.dry_run_pull)) and action_type == "OPEN_MARKET":
+                    aggression_decision = aggression_controller.try_consume(
+                        signal_id=str(signal_id),
+                        symbol=delivered_symbol_key,
+                        evidence=_current_rollout_stats_payload(account=account_id, magic=int(magic)),
+                        equity=float(current_equity or 0.0),
+                        hard_blockers=list(pull_aggression_hard_blockers),
+                        now=now,
+                    )
+                    if not bool(aggression_decision.allowed):
+                        block_reason = str(aggression_decision.reason or "aggression_controller_block")
+                        blocked_reasons.append(f"aggression_controller:{block_reason}")
+                        _record_decision(
+                            symbol_key=delivered_symbol_key,
+                            signal_id=str(signal_id),
+                            decision_type="aggression_gate_block",
+                            reason=block_reason,
+                            session_name=session_name,
+                            strategy_key=_strategy_key(delivered_symbol_key, str(selected.get("setup") or "")),
+                            probability=float(selected.get("probability") or 0.0),
+                            expected_value_r=float(selected.get("expected_value_r") or 0.0),
+                            score=float(selected.get("quality_score") or selected.get("score") or 0.0),
+                            extra={
+                                "tier": str(aggression_decision.tier),
+                                "cap": int(aggression_decision.cap),
+                                "used": int(aggression_decision.used),
+                                "remaining": int(aggression_decision.remaining),
+                                "hard_blockers": list(pull_aggression_hard_blockers),
+                            },
+                        )
+                        _runtime_update(
+                            delivered_symbol_key,
+                            {
+                                "last_reject_stage": "aggression_controller",
+                                "last_reject_reason": block_reason,
+                                "aggression_controller_tier": str(aggression_decision.tier),
+                                "aggression_controller_cap": int(aggression_decision.cap),
+                                "aggression_controller_used": int(aggression_decision.used),
+                                "aggression_controller_remaining": int(aggression_decision.remaining),
+                            },
+                        )
+                        if first_summary is None:
+                            first_summary = f"NONE:blocked:aggression_controller:{block_reason}:{signal_id}"
+                        continue
+                    selected["aggression_controller"] = {
+                        "tier": str(aggression_decision.tier),
+                        "cap": int(aggression_decision.cap),
+                        "used": int(aggression_decision.used),
+                        "remaining": int(aggression_decision.remaining),
+                    }
+                    aggression_reserved = True
                 delivered = queue.mark_delivered(
                     signal_id=signal_id,
                     account=account_id,
@@ -18575,6 +18771,8 @@ def create_bridge_app(
                     lease_seconds=max(1, int(policy.lease_seconds)),
                 )
                 if not delivered:
+                    if aggression_reserved:
+                        aggression_controller.release(str(signal_id), reason="delivery_race", now=now)
                     if first_summary is None:
                         first_summary = f"NONE:delivery_race:{signal_id}"
                     continue
@@ -18586,7 +18784,6 @@ def create_bridge_app(
                         action_id=signal_id,
                         lock_seconds=int(policy.open_lock_seconds),
                     )
-                delivered_symbol_key = _normalize_symbol_key(str(selected.get("symbol", symbol)))
                 delivered_setup = str(selected.get("setup") or "")
                 delivered_updates: dict[str, Any] = {
                     "last_action_id": signal_id,
@@ -18960,6 +19157,15 @@ def create_bridge_app(
         delivered_magic = int(action.get("delivered_magic") or 0)
         delivered_symbol_key = _normalize_symbol_key(str(action.get("symbol_key") or action.get("symbol") or ""))
         delivered_tf = str(action.get("tf") or "M5").upper()
+        if is_open_market_action:
+            if bool(report_payload.get("accepted", False)):
+                aggression_controller.mark_accepted(signal_id, now=report_ts)
+            else:
+                aggression_controller.release(
+                    signal_id,
+                    reason=str(report_payload.get("reason") or report_payload.get("retcode") or "broker_rejected"),
+                    now=report_ts,
+                )
         _update_execution_quality_memory(
             symbol_key=delivered_symbol_key,
             accepted=bool(report_payload.get("accepted", False)),
@@ -20254,6 +20460,7 @@ def start_bridge_background(
     market_data_status_provider: Any | None = None,
     runtime_metrics_provider: Any | None = None,
     telegram_config: dict[str, Any] | None = None,
+    aggression_config: dict[str, Any] | None = None,
 ) -> BridgeServerHandle:
     import uvicorn
 
@@ -20320,6 +20527,7 @@ def start_bridge_background(
         runtime_metrics_provider=runtime_metrics_provider,
         strategy_optimizer=strategy_optimizer,
         telegram_config=telegram_config,
+        aggression_config=aggression_config,
     )
     config = uvicorn.Config(app=app, host=host, port=int(port), log_level="warning", access_log=False)
     server = uvicorn.Server(config=config)
@@ -20373,6 +20581,7 @@ def run_bridge_forever(
     market_data_status_provider: Any | None = None,
     runtime_metrics_provider: Any | None = None,
     telegram_config: dict[str, Any] | None = None,
+    aggression_config: dict[str, Any] | None = None,
 ) -> None:
     import uvicorn
 
@@ -20413,6 +20622,7 @@ def run_bridge_forever(
         runtime_metrics_provider=runtime_metrics_provider,
         strategy_optimizer=strategy_optimizer,
         telegram_config=telegram_config,
+        aggression_config=aggression_config,
     )
     _log(logger, "info", "bridge_server_forever", host=host, port=port)
     uvicorn.run(app, host=host, port=int(port), log_level="warning", access_log=False)

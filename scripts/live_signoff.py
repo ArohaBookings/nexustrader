@@ -58,6 +58,7 @@ def _mt5_verify(settings: Any) -> dict[str, Any]:
         log_file=settings.runtime_paths.logs_dir / "apex.log",
         rotate_max_bytes=int(logging_config.get("rotate_max_bytes", 10 * 1024 * 1024)),
         rotate_backup_count=int(logging_config.get("rotate_backup_count", 7)),
+        retention_days=int(logging_config.get("retention_days", 365)),
     ).build()
     system_config = settings.section("system")
     client = MT5Client(

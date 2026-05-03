@@ -49,7 +49,7 @@ class LoggerFactory:
     log_file: Path | None = None
     rotate_max_bytes: int = 10 * 1024 * 1024
     rotate_backup_count: int = 7
-    retention_days: int = 7
+    retention_days: int = 365
 
     def build(self) -> ApexLogger:
         logger = logging.getLogger(self.name)

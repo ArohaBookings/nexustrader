@@ -13,8 +13,8 @@ import socket
 import time
 
 
-SAFE_BRIDGE_ACTIONS = {"pause_trading", "resume_trading", "kill_switch", "refresh_state"}
-CONFIRMATION_ACTIONS = {"resume_trading", "kill_switch"}
+SAFE_BRIDGE_ACTIONS = {"pause_trading", "resume_trading", "kill_switch", "refresh_state", "unlock_aggression"}
+CONFIRMATION_ACTIONS = {"resume_trading", "kill_switch", "unlock_aggression"}
 BLOCKED_INTENTS = re.compile(
     r"\b("
     r"buy|sell|long|short|market order|place order|open position|close position|"
@@ -211,6 +211,25 @@ class ApexTelegramResponder:
             return self._result(chat_id, user_id, format_risk(dashboard_data))
         if lower in {"/trades", "trades"}:
             return self._result(chat_id, user_id, format_trades(dashboard_data))
+        if lower in {"/aggression", "aggression", "aggression status", "/aggression status"}:
+            return self._result(chat_id, user_id, format_aggression(dashboard_data))
+        if _aggression_unlock_requested(raw):
+            if not bool(self.config.allow_controls):
+                return self._result(chat_id, user_id, "Telegram controls are disabled by config.")
+            command_id = _command_id()
+            return TelegramCommandResult(
+                handled=True,
+                chat_id=chat_id,
+                user_id=user_id,
+                text=(
+                    "Confirmation required for <code>unlock_aggression</code>.\n"
+                    f"Send <code>/confirm {html.escape(command_id)}</code> to activate the base live aggression tier."
+                ),
+                action="unlock_aggression",
+                command_id=command_id,
+                confirmation_required=True,
+                parse_mode=self.config.parse_mode,
+            )
         if lower in {"/apex", "/intel", "apex", "intel"} or re.search(r"\b(thinking|edge|scale|100k|intelligence|apex|repair|self[- ]?heal)\b", raw, re.I):
             return self._result(chat_id, user_id, format_apex(dashboard_data))
         if re.search(r"\b(increase|more|raise|boost).*\b(frequency|trades|entries)\b|\bfrequency\b.*\b(xau|btc|gold)\b", raw, re.I):
@@ -220,6 +239,7 @@ class ApexTelegramResponder:
             "/resume": "resume_trading",
             "/kill": "kill_switch",
             "/refresh": "refresh_state",
+            "/unlock_aggression": "unlock_aggression",
         }.get(lower)
         if command_action:
             if not bool(self.config.allow_controls):
@@ -253,7 +273,7 @@ class ApexTelegramResponder:
             return self._result(
                 chat_id,
                 user_id,
-                "Blocked: Telegram cannot place trades, increase risk, bypass funded rails, or change live strategy parameters. Use /status, /funded, /risk, /trades, /apex, /pause, /refresh, /resume, or /kill.",
+                "Blocked: Telegram cannot place trades, increase risk, bypass funded rails, or change live strategy parameters. Use /status, /funded, /risk, /trades, /aggression, /apex, /pause, /refresh, /resume, or /kill.",
             )
         ai_text = self._ai_reply(raw, dashboard_data)
         return self._result(chat_id, user_id, ai_text)
@@ -526,6 +546,38 @@ def format_frequency_policy(dashboard_data: Mapping[str, Any]) -> str:
     )
 
 
+def format_aggression(dashboard_data: Mapping[str, Any]) -> str:
+    summary = _record(dashboard_data.get("summary"))
+    controller = _record(dashboard_data.get("aggression_controller") or summary.get("aggression_controller"))
+    live = _record(dashboard_data.get("live_evidence") or controller.get("live_evidence"))
+    promotion = _record(controller.get("promotion"))
+    blockers = [str(item) for item in _sequence(controller.get("blockers"))]
+    why_not_full = [
+        str(item)
+        for item in _sequence(
+            controller.get("why_not_full_aggression")
+            or dashboard_data.get("why_not_full_aggression")
+            or summary.get("why_not_full_aggression")
+        )
+    ]
+    if not controller:
+        return "<b>Live Aggression</b>\nNo aggression controller telemetry is available yet."
+    return _html_lines(
+        "<b>Live Aggression</b>",
+        [
+            f"Tier: <code>{_esc(controller.get('tier', 'UNKNOWN'))}</code> | Unlocked: <code>{bool(controller.get('owner_unlocked'))}</code>",
+            f"2h bucket: <code>{int(_number(controller.get('used'), 0.0))}/{int(_number(controller.get('cap'), 0.0))}</code> used | Remaining: <code>{int(_number(controller.get('remaining'), 0.0))}</code>",
+            f"Next reset: <code>{_esc(controller.get('next_reset', ''))}</code>",
+            f"Live trades: <code>{int(_number(live.get('trade_count'), 0.0))}</code> | Win rate: <code>{_pct(_number(live.get('win_rate'), 0.0))}</code> | Expectancy: <code>{_number(live.get('expectancy_r'), 0.0):.3f}R</code>",
+            f"Profit factor: <code>{_number(live.get('profit_factor'), 0.0):.2f}</code> | Max DD: <code>{_number(live.get('max_drawdown_r'), 0.0):.2f}R</code>",
+            f"Promotion: proven=<code>{bool(promotion.get('proven_ready'))}</code> full=<code>{bool(promotion.get('full_ready'))}</code>",
+            "Blockers: <code>" + _esc(", ".join(blockers[:5]) or "none") + "</code>",
+            "Why not full: <code>" + _esc(", ".join(why_not_full[:5]) or "none") + "</code>",
+            "Shadow trades do not unlock promotion. Hard rails still block every tier.",
+        ],
+    )
+
+
 def format_trades(dashboard_data: Mapping[str, Any]) -> str:
     trades = [_record(item) for item in _sequence(dashboard_data.get("open_trades"))]
     if not trades:
@@ -606,6 +658,8 @@ def _help_text() -> str:
             "/blockers - BTC/XAU blockers and safe repair status",
             "/risk - drawdown, open risk, repair rails",
             "/trades - open trade management snapshot",
+            "/aggression - live tier, 2h cap usage, promotion blockers",
+            "/aggression unlock - requires /confirm",
             "/apex - institutional intelligence and self-repair summary",
             "/pause - pause new trading",
             "/refresh - refresh bridge/dashboard state",
@@ -622,6 +676,21 @@ def _html_lines(title: str, lines: list[str]) -> str:
 
 def _command_id() -> str:
     return f"tg_{int(time.time() * 1000)}"
+
+
+def _aggression_unlock_requested(text: str) -> bool:
+    raw = str(text or "").strip()
+    lower = raw.lower()
+    if lower in {"/aggression unlock", "aggression unlock", "/unlock_aggression", "unlock aggression"}:
+        return True
+    return bool(
+        re.search(
+            r"\b(go|turn on|enable|activate|unlock|start|run|switch to)\b.*\b(aggressive|aggression)\b"
+            r"|\b(full aggression|go aggressive now|aggressive mode)\b",
+            raw,
+            re.I,
+        )
+    )
 
 
 def _safe_telegram_error(message: str) -> str:
