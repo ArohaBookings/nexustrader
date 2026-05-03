@@ -25,6 +25,7 @@ def test_local_mac_start_runs_bridge_and_telegram_polling_sidecar() -> None:
     assert "data/run/apex_bridge.pid" in script
     assert "data/run/apex_telegram_poll.pid" in script
     assert "wait_for_bridge" in script
+    assert "bridge_healthy_stable" in script
     assert "screen -L -dmS" in script
     assert "telegram_poller_alive" in script
     assert "tail_log_on_failure" in script
@@ -40,6 +41,10 @@ def test_local_mac_stop_stops_bridge_and_poller_pids() -> None:
     assert "data/run/apex_telegram_poll.pid" in script
     assert "data/run/apex_bridge.pid" in script
     assert "kill \"${pid}\"" in script
+    assert "wait_for_no_process" in script
+    assert "wait_for_bridge_down" in script
+    assert "pgrep -f --" in script
+    assert "pkill -9 -f --" in script
 
 
 def test_local_mac_launch_agents_are_defined_for_persistent_services() -> None:

@@ -85,6 +85,12 @@ urlopen("http://127.0.0.1:8000/health", timeout=2).read()
 PY
 }
 
+bridge_healthy_stable() {
+  bridge_healthy || return 1
+  sleep 1
+  bridge_healthy
+}
+
 wait_for_bridge() {
   local attempts="${1:-20}"
   local delay="${2:-1}"
@@ -112,7 +118,7 @@ tail_log_on_failure() {
 start_bridge() {
   local bridge_pid="data/run/apex_bridge.pid"
   local bridge_screen="${APEX_BRIDGE_SCREEN_SESSION:-apex_bridge}"
-  if bridge_healthy; then
+  if bridge_healthy_stable; then
     echo "APEX bridge already responding at http://127.0.0.1:8000"
     return 0
   fi
