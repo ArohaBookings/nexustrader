@@ -58,6 +58,13 @@ def detect_funded_account_mode(*parts: Any) -> bool:
     return False
 
 
+def is_funded_challenge_phase(phase: str) -> bool:
+    value = str(phase or "").strip().lower()
+    if not value:
+        return True
+    return any(token in value for token in ("challenge", "evaluation", "verification", "phase 1", "phase 2", "phase_1", "phase_2", "eval"))
+
+
 @dataclass
 class TradeStats:
     win_rate: float = 0.5
@@ -1325,6 +1332,10 @@ class RiskEngine:
         if bool(payload.funded_account_mode):
             funded_daily_limit = max(0.0, float(payload.funded_daily_loss_limit_pct or 0.0))
             funded_overall_limit = max(0.0, float(payload.funded_overall_drawdown_limit_pct or 0.0))
+            funded_target = max(0.0, float(payload.funded_profit_target_pct or 0.0))
+            funded_remaining = float(payload.funded_remaining_target_pct or 0.0)
+            if funded_target > 0.0 and funded_remaining <= 0.0 and is_funded_challenge_phase(payload.funded_phase):
+                return RiskDecision(False, "SOFT", 0.0, 0.0, "funded_target_reached_protect_pass")
             funded_daily_buffer = max(0.0, funded_daily_limit - max(0.0, float(payload.stats.daily_dd_pct_live or 0.0)))
             funded_overall_buffer = max(0.0, funded_overall_limit - max(0.0, float(payload.stats.absolute_drawdown_pct or 0.0)))
             funded_daily_quality = clamp(

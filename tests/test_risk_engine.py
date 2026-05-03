@@ -1801,6 +1801,29 @@ class RiskEngineTests(unittest.TestCase):
         self.assertTrue(decision.approved, msg=decision.reason)
         self.assertGreaterEqual(int(decision.diagnostics.get("effective_hourly_trade_cap") or 0), 8)
 
+    def test_funded_challenge_stops_new_risk_after_target_reached(self) -> None:
+        payload = self._base()
+        payload.funded_account_mode = True
+        payload.funded_phase = "evaluation"
+        payload.funded_profit_target_pct = 0.08
+        payload.funded_remaining_target_pct = 0.0
+
+        decision = self.engine.evaluate(payload)
+
+        self.assertFalse(decision.approved)
+        self.assertEqual(decision.reason, "funded_target_reached_protect_pass")
+
+    def test_funded_live_account_can_continue_after_challenge_target_field_is_zero(self) -> None:
+        payload = self._base()
+        payload.funded_account_mode = True
+        payload.funded_phase = "live funded account"
+        payload.funded_profit_target_pct = 0.08
+        payload.funded_remaining_target_pct = 0.0
+
+        decision = self.engine.evaluate(payload)
+
+        self.assertTrue(decision.approved, msg=decision.reason)
+
 
 if __name__ == "__main__":
     unittest.main()
