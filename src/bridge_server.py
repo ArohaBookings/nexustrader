@@ -12442,6 +12442,8 @@ def create_bridge_app(
                 if not entry_key:
                     continue
                 entry_lane_name = _clean_text_value(entry.get("lane_name"))
+                if not entry_lane_name and entry_key == strategy_key:
+                    entry_lane_name = _clean_text_value(runtime.get("lane_name"))
                 if not entry_lane_name:
                     entry_lane_name = infer_trade_lane(
                         symbol=symbol_key,
@@ -12829,10 +12831,8 @@ def create_bridge_app(
             if resolved_lane_session_priority in {"", "NEUTRAL", "OFF_SESSION"}:
                 resolved_lane_session_priority = str(xau_priority.lane_session_priority)
             resolved_session_native_pair = bool(resolved_session_native_pair or xau_priority.session_native_pair)
-            resolved_session_priority_multiplier = max(
-                float(resolved_session_priority_multiplier),
-                float(xau_priority.session_priority_multiplier),
-            )
+            if abs(float(resolved_session_priority_multiplier) - 1.0) < 1e-9:
+                resolved_session_priority_multiplier = float(xau_priority.session_priority_multiplier)
             resolved_pair_priority_rank = min(
                 int(resolved_pair_priority_rank),
                 int(xau_priority.pair_priority_rank_in_session),

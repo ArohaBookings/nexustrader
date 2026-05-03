@@ -1211,14 +1211,60 @@ void ExecuteDecision(DecisionData &decision)
 
 void PullAndExecute()
 {
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(point <= 0.0)
+      point = 0.0001;
+   double spreadPoints = (bid > 0.0 && ask > 0.0) ? MathAbs(ask - bid) / point : 0.0;
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   double lotMin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double lotMax = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   double contractSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_CONTRACT_SIZE);
+   int stopsLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   int freezeLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   int symbolSelected = (int)SymbolInfoInteger(_Symbol, SYMBOL_SELECT);
+   int symbolTradeMode = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_MODE);
+   int terminalConnected = (int)TerminalInfoInteger(TERMINAL_CONNECTED);
+   int terminalTradeAllowed = (int)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+   int mqlTradeAllowed = (int)MQLInfoInteger(MQL_TRADE_ALLOWED);
+   long serverTime = (long)TimeTradeServer();
+   long gmtTime = (long)TimeGMT();
    string endpoint = StringFormat(
-      "/v1/pull?symbol=%s&account=%I64d&magic=%I64d&balance=%.2f&equity=%.2f&free_margin=%.2f",
+      "/v1/pull?symbol=%s&account=%I64d&magic=%I64d&balance=%.2f&equity=%.2f&free_margin=%.2f"
+      + "&bid=%.10f&ask=%.10f&spread_points=%.2f&point=%.10f&digits=%d"
+      + "&tick_size=%.10f&tick_value=%.10f&lot_min=%.4f&lot_max=%.4f&lot_step=%.4f&contract_size=%.4f"
+      + "&stops_level=%d&freeze_level=%d&symbol_selected=%d&symbol_trade_mode=%d"
+      + "&terminal_connected=%d&terminal_trade_allowed=%d&mql_trade_allowed=%d&server_time=%I64d&gmt_time=%I64d",
       _Symbol,
       AccountInfoInteger(ACCOUNT_LOGIN),
       magicNumber,
       AccountInfoDouble(ACCOUNT_BALANCE),
       AccountInfoDouble(ACCOUNT_EQUITY),
-      AccountInfoDouble(ACCOUNT_MARGIN_FREE)
+      AccountInfoDouble(ACCOUNT_MARGIN_FREE),
+      bid,
+      ask,
+      spreadPoints,
+      point,
+      digits,
+      tickSize,
+      tickValue,
+      lotMin,
+      lotMax,
+      lotStep,
+      contractSize,
+      stopsLevel,
+      freezeLevel,
+      symbolSelected,
+      symbolTradeMode,
+      terminalConnected,
+      terminalTradeAllowed,
+      mqlTradeAllowed,
+      serverTime,
+      gmtTime
    );
    string response;
    int status = 0;

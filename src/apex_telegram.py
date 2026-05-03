@@ -8,6 +8,7 @@ import html
 import json
 import os
 import re
+import socket
 import time
 
 
@@ -77,10 +78,19 @@ class TelegramBotClient:
         payload: dict[str, Any] = {"timeout": int(timeout), "limit": int(limit)}
         if offset is not None:
             payload["offset"] = int(offset)
-        result = self._request("getUpdates", payload)
+        transport_timeout = max(float(self.timeout_seconds), float(max(0, int(timeout))) + 10.0)
+        result = self._request("getUpdates", payload, timeout_seconds=transport_timeout)
         if not isinstance(result, list):
             raise ApexTelegramError("getUpdates returned unexpected payload")
         return [dict(item) for item in result if isinstance(item, dict)]
+
+    def delete_webhook(self, *, drop_pending_updates: bool = False) -> bool:
+        result = self._request("deleteWebhook", {"drop_pending_updates": bool(drop_pending_updates)})
+        return bool(result)
+
+    def set_my_commands(self, commands: list[Mapping[str, str]]) -> bool:
+        result = self._request("setMyCommands", {"commands": [dict(item) for item in commands]})
+        return bool(result)
 
     def discover_chat_ids(self) -> list[str]:
         found: list[str] = []
@@ -111,7 +121,13 @@ class TelegramBotClient:
         )
         return result if isinstance(result, dict) else {}
 
-    def _request(self, method: str, payload: Mapping[str, Any] | None = None) -> Any:
+    def _request(
+        self,
+        method: str,
+        payload: Mapping[str, Any] | None = None,
+        *,
+        timeout_seconds: float | None = None,
+    ) -> Any:
         if not self.token or ":" not in self.token:
             raise ApexTelegramError("Telegram token is missing or malformed")
         body = json.dumps(dict(payload or {})).encode("utf-8")
@@ -122,11 +138,14 @@ class TelegramBotClient:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=max(1.0, float(self.timeout_seconds))) as response:  # nosec B310
+            request_timeout = max(1.0, float(self.timeout_seconds if timeout_seconds is None else timeout_seconds))
+            with urlopen(request, timeout=request_timeout) as response:  # nosec B310
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise ApexTelegramError(_safe_telegram_error(detail)) from exc
+        except socket.timeout as exc:
+            raise ApexTelegramError("Telegram request timed out") from exc
         except URLError as exc:
             raise ApexTelegramError(f"Telegram request failed: {exc.reason}") from exc
         parsed = json.loads(raw)

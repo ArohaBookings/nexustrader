@@ -157,11 +157,40 @@ Recommended reverse-proxy scope:
 - `/dashboard/data`
 - optional `/health`
 
-## Local run
+## Local Mac run
 ```bash
-cd "/Users/leobons/Library/Mobile Documents/com~apple~CloudDocs/Kimi_Agent_Set & Forget Trade Bot/apex_bot"
-PYTHONPATH=. ./.venv/bin/python -m src.main --bridge-serve
+cd "/Users/leobons/Library/Mobile Documents/com~apple~CloudDocs/Kimi_Agent_Set & Forget Trade Bot/apex_bot V2 BOT"
+./scripts/start_local_mac.sh
 ```
+
+For Mac + MT5 EA WebRequest mode, set `APEX_MT5_RUNTIME_MODE=EA_BRIDGE` in `config/secrets.env`. This starts the local Python bridge without requiring the Windows-only `MetaTrader5` Python package; the attached MT5 EA polls `http://127.0.0.1:8000`.
+
+For a persistent local service that is not tied to a terminal or Codex shell, install launch agents:
+
+```bash
+./scripts/install_local_mac_launch_agents.sh
+```
+
+This registers:
+- `com.apexbot.bridge`
+- `com.apexbot.telegram`
+
+Stop both launch agents and any PID-file fallback processes with:
+
+```bash
+./scripts/stop_local_mac.sh
+```
+
+After pulling new bridge code, recompile `mt5_bridge/ApexBridgeEA.mq5` in MetaEditor and reattach it. The EA sends account state, execution metadata, `TERMINAL_CONNECTED`, `TERMINAL_TRADE_ALLOWED`, and `MQL_TRADE_ALLOWED` on every `/v1/pull`; live sign-off blocks until those flags are visible and trade-allowed.
+
+Telegram on a local Mac uses polling:
+
+```bash
+PYTHONPATH=. python3 scripts/apex_telegram_poll.py --claim-owner --once
+PYTHONPATH=. python3 scripts/apex_telegram_poll.py --claim-owner
+```
+
+Send `/start` to `Nexus_vantage_trader_bot` before the one-shot claim command. The sidecar writes `TELEGRAM_CHAT_ID` into the ignored local `config/secrets.env` and forwards updates to the local bridge webhook handler.
 
 ## VPS later
 Keep using the existing production launcher:
@@ -184,4 +213,4 @@ PYTHONPATH=. ./.venv/bin/python scripts/start_bridge_prod.py
 ## Migration notes
 - Bridge queue DB will auto-add the new `context_json` column.
 - Existing rows remain valid.
-- No EA contract or endpoint shape change is required.
+- No endpoint path change is required, but the EA should be recompiled and reattached so the bridge receives the expanded MT5 permission and symbol metadata fields.

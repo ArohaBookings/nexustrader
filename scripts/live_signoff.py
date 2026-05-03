@@ -92,6 +92,11 @@ def _telegram_identity(settings: Any, *, send_test: bool) -> dict[str, Any]:
         return {"ok": False, "error": str(exc)}
 
 
+def _ea_bridge_mode() -> bool:
+    mode = str(os.getenv("APEX_MT5_RUNTIME_MODE") or os.getenv("MT5_RUNTIME_MODE") or "").strip().upper()
+    return mode in {"EA_BRIDGE", "EA", "BRIDGE", "WEBREQUEST"}
+
+
 def main() -> int:
     _ensure_user_tool_paths()
     args = _parse_args()
@@ -104,7 +109,17 @@ def main() -> int:
         host = "127.0.0.1"
         port = int(dashboard_config.get("bind_port") or dashboard_config.get("port") or port)
 
-    mt5 = {"ok": False, "reasons": ["mt5_check_skipped"]} if args.skip_mt5 else _mt5_verify(settings)
+    if args.skip_mt5:
+        mt5 = {"ok": False, "reasons": ["mt5_check_skipped"]}
+    elif _ea_bridge_mode():
+        mt5 = {
+            "ok": True,
+            "connected": False,
+            "runtime_mode": "EA_BRIDGE",
+            "reasons": ["mt5_python_skipped_ea_bridge_mode"],
+        }
+    else:
+        mt5 = _mt5_verify(settings)
     bridge = {"ok": False, "error": "bridge_check_skipped"} if args.skip_bridge else collect_bridge_health(host, port)
     report = build_live_readiness_report(
         project_root=ROOT,

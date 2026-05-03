@@ -225,8 +225,8 @@ def build_live_readiness_report(
     checks.append(
         _warn(
             "vercel_runtime_architecture",
-            "Vercel can host dashboard/webhook surfaces, but the MT5 execution worker must run on the MT5 VPS/VM.",
-            details={"reason": "MT5 requires a terminal process; serverless deploys are not a substitute for the live broker bridge."},
+            "Vercel can host dashboard/webhook surfaces, but MT5 execution must run wherever the MT5 terminal is running.",
+            details={"reason": "MT5 requires a terminal process; serverless deploys are not a substitute for this Mac/VPS bridge."},
         )
     )
 
@@ -357,7 +357,9 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
     names = {check.name for check in hard_failures}
     actions: list[str] = []
     if "mt5_connection" in names or "bridge_mt5_feed" in names:
-        actions.append("Run this sign-off on the Windows MT5 VPS/VM with MetaTrader 5 installed, logged in, and WebRequest enabled for the bridge URL.")
+        actions.append(
+            "On the MT5 host, compile and reattach mt5_bridge/ApexBridgeEA.mq5, enable WebRequest for http://127.0.0.1:8000, and enable AutoTrading/Allow Algo Trading so terminal_connected and trade_allowed flags turn true."
+        )
     if "required_env" in names:
         actions.append("Populate config/secrets.env with Telegram, webhook, and OpenAI secrets; never commit the file.")
     if "telegram_bot_identity" in names:
@@ -371,7 +373,7 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
     if "vercel_auth_project" in names or "cli_vercel" in names:
         actions.append("Install/authenticate Vercel CLI and link the dashboard/webhook project before production deploy.")
     if any(check.name == "vercel_runtime_architecture" for check in warnings):
-        actions.append("Keep MT5 execution on the VPS/VM; use Vercel only for dashboard/webhook surfaces or a secure proxy.")
+        actions.append("Keep MT5 execution on this Mac while MT5 is local; use Vercel only for dashboard/webhook surfaces or a secure proxy later.")
     return actions
 
 

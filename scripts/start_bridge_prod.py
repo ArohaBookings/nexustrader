@@ -9,6 +9,10 @@ import time
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.env_loader import load_env_files
 
 
 def _truthy(value: str | None) -> bool:
@@ -19,8 +23,17 @@ def _live_trading_requested(env: dict[str, str]) -> bool:
     return _truthy(env.get("LIVE_TRADING")) or str(env.get("APEX_MODE", "")).strip().upper() == "LIVE"
 
 
+def _ea_bridge_mode(env: dict[str, str]) -> bool:
+    mode = str(env.get("APEX_MT5_RUNTIME_MODE") or env.get("MT5_RUNTIME_MODE") or "").strip().upper()
+    return mode in {"EA_BRIDGE", "EA", "BRIDGE", "WEBREQUEST"}
+
+
 def _allow_bridge_without_mt5(env: dict[str, str]) -> bool:
-    return _truthy(env.get("APEX_START_BRIDGE_WITHOUT_MT5")) or _truthy(env.get("APEX_ALLOW_BRIDGE_WITHOUT_MT5"))
+    return (
+        _ea_bridge_mode(env)
+        or _truthy(env.get("APEX_START_BRIDGE_WITHOUT_MT5"))
+        or _truthy(env.get("APEX_ALLOW_BRIDGE_WITHOUT_MT5"))
+    )
 
 
 def _should_abort_without_mt5(env: dict[str, str]) -> bool:
@@ -45,6 +58,7 @@ def _run_verify(env: dict[str, str]) -> bool:
 def main() -> int:
     child: subprocess.Popen[str] | None = None
     try:
+        load_env_files(PROJECT_ROOT)
         env = os.environ.copy()
         env["PYTHONPATH"] = "."
 
@@ -59,6 +73,9 @@ def main() -> int:
             print(f"[APEX] waiting {boot_wait}s for MT5 terminal startup")
             time.sleep(boot_wait)
 
+        if _ea_bridge_mode(env):
+            print("[APEX] EA_BRIDGE mode active: MT5 terminal is expected to poll this local bridge via WebRequest")
+
         if skip_verify and _should_abort_without_mt5(env):
             print(
                 "[APEX] refusing to skip MT5 verification in LIVE mode; set "
@@ -67,7 +84,7 @@ def main() -> int:
             )
             return 2
 
-        if not skip_verify:
+        if not skip_verify and not _ea_bridge_mode(env):
             verify_ok = False
             for attempt in range(verify_retries + 1):
                 verify_ok = _run_verify(env)

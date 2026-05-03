@@ -259,20 +259,29 @@ PYTHONPATH=. python3 -m src.main --smoke-demo
 
 ## MT5 EA Bridge Setup
 
-1. Start Python engine with bridge enabled:
+1. For local Mac MT5/WebRequest mode, keep these values in `config/secrets.env`:
 
 ```bash
-PYTHONPATH=. python3 -m src.main --bridge-serve
+LIVE_TRADING=true
+APEX_MT5_RUNTIME_MODE=EA_BRIDGE
 ```
 
-2. In MT5 terminal, open `Tools -> Options -> Expert Advisors` and add this URL to allowed WebRequest list:
+`APEX_MT5_RUNTIME_MODE=EA_BRIDGE` means the Python bridge does not require the `MetaTrader5` Python package. MT5 executes through the EA in `mt5_bridge/ApexBridgeEA.mq5`, which polls the local bridge.
+
+2. Start Python engine with bridge enabled:
+
+```bash
+PYTHONPATH=. python3 scripts/start_bridge_prod.py
+```
+
+3. In MT5 terminal, open `Tools -> Options -> Expert Advisors` and add this URL to allowed WebRequest list:
 `http://127.0.0.1:8000`
 
-3. Open `mt5_bridge/ApexBridgeEA.mq5` in MetaEditor, compile it, then attach to each symbol chart you want traded (`XAUUSD`, `EURUSD`, `GBPUSD`, `USDJPY`, `BTCUSD`).
+4. Open `mt5_bridge/ApexBridgeEA.mq5` in MetaEditor, compile it, then attach to each symbol chart you want traded (`XAUUSD`, `EURUSD`, `GBPUSD`, `USDJPY`, `BTCUSD`).
 
-4. Suggested chart timeframe for the EA bridge: `M5` (the Python strategy still uses multi-timeframe features internally).
+5. Suggested chart timeframe for the EA bridge: `M5` (the Python strategy still uses multi-timeframe features internally).
 
-5. Confirm bridge health:
+6. Confirm bridge health:
    - Browser/curl: `http://127.0.0.1:8000/health`
    - Stats endpoint: `http://127.0.0.1:8000/stats`
    - AI health endpoint: `http://127.0.0.1:8000/ai/health`
@@ -282,7 +291,8 @@ PYTHONPATH=. python3 -m src.main --bridge-serve
 
 Bridge account feed note:
 
-- EA now calls `/v1/pull` with optional `balance`, `equity`, and `free_margin`.
+- EA calls `/v1/pull` with account state, symbol execution metadata, and MT5 permission flags.
+- Required live sign-off flags come from the compiled EA: `terminal_connected`, `terminal_trade_allowed`, and `mql_trade_allowed`.
 - When these fields are present, dashboard equity is labeled `LIVE_BRIDGE_FEED`.
 - If MT5 equity feed is unavailable, dashboard shows `INTERNAL (NO MT5 EQUITY FEED)` so internal fallback is explicit.
 - In bridge mode without MT5 account metrics, risk uses a conservative internal estimate (`micro_account_mode.internal_equity_estimate`, default `50`) and never labels account state as live feed.
@@ -292,6 +302,58 @@ Bridge account feed note:
   - If snapshots are not provided, bridge management still runs with pull/query + journal state.
 
 No `npm dev` or Next.js runtime is required for live trading. The Python process is the engine; the EA is the execution bridge.
+
+## Local Telegram Polling
+
+For this Mac setup, Telegram should use local polling instead of a webhook. Telegram webhooks require a public HTTPS URL, but the local bridge is only on `127.0.0.1`.
+
+One-command local Mac startup:
+
+```bash
+./scripts/start_local_mac.sh
+```
+
+This starts the bridge listener and Telegram polling sidecar in the background, with logs in `logs/local_bridge.log` and `logs/telegram_poll.log`. By default it starts the bridge listener only; set `APEX_LOCAL_START_STRATEGY=true` only after live sign-off passes and you want the strategy loop running.
+
+For a persistent Mac setup that survives shell/Codex session exits, install the launch agents:
+
+```bash
+./scripts/install_local_mac_launch_agents.sh
+```
+
+This registers `com.apexbot.bridge` and `com.apexbot.telegram` with `launchd`, keeps them alive, and writes to the same local log files. Stop them with:
+
+```bash
+./scripts/stop_local_mac.sh
+```
+
+1. Open `https://t.me/Nexus_vantage_trader_bot` and send `/start`.
+
+2. Claim the owner chat ID from the first incoming message:
+
+```bash
+PYTHONPATH=. python3 scripts/apex_telegram_poll.py --claim-owner --once
+```
+
+3. Run the polling sidecar while the bridge is running:
+
+```bash
+PYTHONPATH=. python3 scripts/apex_telegram_poll.py --claim-owner
+```
+
+4. Send a test message after `TELEGRAM_CHAT_ID` is present:
+
+```bash
+PYTHONPATH=. python3 scripts/apex_telegram_check.py --send-test
+```
+
+The polling sidecar forwards every Telegram update to the same local `/telegram/webhook` bridge handler, using `TELEGRAM_WEBHOOK_SECRET`. It stores its update cursor in `data/telegram_poll_offset.json` so restarts do not replay old commands.
+
+Stop local background services:
+
+```bash
+./scripts/stop_local_mac.sh
+```
 
 AI adaptation note:
 

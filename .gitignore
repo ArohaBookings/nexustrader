@@ -15,6 +15,7 @@ data/
 runtime_logs/
 tmp/
 *.log
+screenlog.*
 *.db
 *.sqlite
 *.sqlite3
