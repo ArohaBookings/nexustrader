@@ -12478,10 +12478,13 @@ def create_bridge_app(
             runtime=runtime,
             setup_name=setup_name,
         )
-        resolved_session_name = str(
+        runtime_session_value = (
             runtime.get("session_policy_current")
             or runtime.get("last_session")
             or runtime.get("current_session")
+        )
+        resolved_session_name = str(
+            runtime_session_value
             or _session_name_utc(utc_now())
             or ""
         ).strip().upper()
@@ -12519,13 +12522,11 @@ def create_bridge_app(
                     and is_xau_grid_lane(entry_lane_name)
                     and _clean_text_value(entry.get("session_priority_profile")) in {"", "GLOBAL"}
                 ):
-                    priority_session_name = (
-                        xau_primary_session_for_lane(entry_lane_name)
-                        or (
-                            resolved_session_name
-                            if resolved_session_name in {"LONDON", "OVERLAP", "NEW_YORK"}
-                            else "LONDON"
-                        )
+                    primary_session = xau_primary_session_for_lane(entry_lane_name)
+                    priority_session_name = primary_session or (
+                        resolved_session_name
+                        if runtime_session_value and resolved_session_name in {"LONDON", "OVERLAP", "NEW_YORK"}
+                        else "LONDON"
                     )
                 priority = session_priority_context(
                     symbol=symbol_key,
@@ -12626,13 +12627,11 @@ def create_bridge_app(
             )
             fallback_session_name = resolved_session_name
             if symbol_key == "XAUUSD" and is_xau_grid_lane(fallback_lane_name):
-                fallback_session_name = (
-                    xau_primary_session_for_lane(fallback_lane_name)
-                    or (
-                        resolved_session_name
-                        if resolved_session_name in {"LONDON", "OVERLAP", "NEW_YORK"}
-                        else "LONDON"
-                    )
+                primary_session = xau_primary_session_for_lane(fallback_lane_name)
+                fallback_session_name = primary_session or (
+                    resolved_session_name
+                    if runtime_session_value and resolved_session_name in {"LONDON", "OVERLAP", "NEW_YORK"}
+                    else "LONDON"
                 )
             fallback_priority = session_priority_context(
                 symbol=symbol_key,
@@ -12864,21 +12863,22 @@ def create_bridge_app(
             default=0.0,
             treat_as_generic=lambda value: value <= 0.0,
         )
-        resolved_session_name = str(
+        runtime_session_value = (
             runtime.get("session_policy_current")
             or runtime.get("last_session")
             or runtime.get("current_session")
+        )
+        resolved_session_name = str(
+            runtime_session_value
             or _session_name_utc(utc_now())
             or ""
         ).strip().upper()
         if symbol_key == "XAUUSD" and is_xau_grid_lane(resolved_lane_name):
-            xau_priority_session = (
-                xau_primary_session_for_lane(resolved_lane_name)
-                or (
-                    resolved_session_name
-                    if resolved_session_name in {"LONDON", "OVERLAP", "NEW_YORK"}
-                    else "LONDON"
-                )
+            primary_session = xau_primary_session_for_lane(resolved_lane_name)
+            xau_priority_session = primary_session or (
+                resolved_session_name
+                if runtime_session_value and resolved_session_name in {"LONDON", "OVERLAP", "NEW_YORK"}
+                else "LONDON"
             )
             xau_priority = session_priority_context(
                 symbol=symbol_key,
