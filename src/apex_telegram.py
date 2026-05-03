@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 import html
 import json
 import os
+from pathlib import Path
 import re
 import socket
 import time
@@ -292,11 +293,54 @@ def owner_chat_id_from_env(config: ApexTelegramConfig, client: TelegramBotClient
     chat_id = os.getenv(config.owner_chat_id_env, "").strip()
     if chat_id:
         return chat_id
+    chat_id = _secret_file_value(config.owner_chat_id_env)
+    if chat_id:
+        os.environ[config.owner_chat_id_env] = chat_id
+        return chat_id
     if client is not None:
         discovered = client.discover_chat_ids()
         if discovered:
             return discovered[-1]
     return ""
+
+
+def _secret_file_value(key: str) -> str:
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", str(key or "")):
+        return ""
+    for path in _candidate_secret_paths():
+        if not path.exists() or not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            raw_key, raw_value = stripped.split("=", 1)
+            if raw_key.strip() == key:
+                return raw_value.strip().strip('"').strip("'")
+    return ""
+
+
+def _candidate_secret_paths() -> list[Path]:
+    cwd = Path.cwd()
+    module_root = Path(__file__).resolve().parents[1]
+    candidates = [
+        cwd / "config" / "secrets.env",
+        cwd / "secrets.env",
+        module_root / "config" / "secrets.env",
+        module_root / "secrets.env",
+    ]
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(resolved)
+    return unique
 
 
 def extract_telegram_message(update: Mapping[str, Any]) -> TelegramMessage | None:

@@ -37,3 +37,11 @@ def test_telegram_long_poll_transport_timeout_exceeds_poll_timeout() -> None:
     assert "transport_timeout = max" in module
     assert "int(timeout))) + 10.0" in module
     assert "except socket.timeout" in module
+
+
+def test_bridge_can_load_claimed_owner_chat_from_local_secret_file() -> None:
+    module = (ROOT / "src" / "apex_telegram.py").read_text(encoding="utf-8")
+
+    assert "_secret_file_value(config.owner_chat_id_env)" in module
+    assert 'cwd / "config" / "secrets.env"' in module
+    assert "os.environ[config.owner_chat_id_env] = chat_id" in module
