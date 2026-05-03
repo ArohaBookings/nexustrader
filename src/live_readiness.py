@@ -112,7 +112,17 @@ def collect_bridge_health(host: str, port: int, *, timeout_seconds: float = 2.0)
         with urlopen(url, timeout=max(0.5, float(timeout_seconds))) as response:  # nosec B310
             raw = response.read().decode("utf-8")
             payload = json.loads(raw)
-            return payload if isinstance(payload, dict) else {"ok": False, "error": "unexpected payload"}
+            if not isinstance(payload, dict):
+                return {"ok": False, "error": "unexpected payload"}
+            try:
+                with urlopen(f"http://{host}:{int(port)}/stats", timeout=max(0.5, float(timeout_seconds))) as stats_response:  # nosec B310
+                    stats_payload = json.loads(stats_response.read().decode("utf-8"))
+                if isinstance(stats_payload, dict):
+                    payload["latest_account_snapshot"] = stats_payload.get("latest_account_snapshot")
+                    payload["account_scaling"] = stats_payload.get("account_scaling")
+            except (OSError, URLError, json.JSONDecodeError) as exc:
+                payload["stats_probe_error"] = str(exc)
+            return payload
     except (OSError, URLError, json.JSONDecodeError) as exc:
         return {"ok": False, "error": str(exc), "url": url}
 
@@ -318,6 +328,30 @@ def build_live_readiness_report(
                 details=dict(broker) if isinstance(broker, Mapping) else {},
             )
         )
+
+    latest_account = bridge_payload.get("latest_account_snapshot") if isinstance(bridge_payload.get("latest_account_snapshot"), Mapping) else {}
+    if bridge_feed_ok and latest_account:
+        account_equity = _number(latest_account.get("equity"), 0.0)
+        account_balance = _number(latest_account.get("balance"), 0.0)
+        checks.append(
+            _check(
+                "bridge_account_equity",
+                account_equity > 0.0 and account_balance >= 0.0,
+                "Bridge is receiving a positive MT5 account equity snapshot"
+                if account_equity > 0.0
+                else "Bridge is polling MT5 but account equity is zero or unavailable; live sizing/funded logic cannot be trusted.",
+                hard=True,
+                details={
+                    "account": latest_account.get("account"),
+                    "symbol_key": latest_account.get("symbol_key"),
+                    "magic": latest_account.get("magic"),
+                    "balance": account_balance,
+                    "equity": account_equity,
+                    "free_margin": _number(latest_account.get("free_margin"), 0.0),
+                    "updated_at": latest_account.get("updated_at"),
+                },
+            )
+        )
     elif bridge_feed_ok and broker_explicit_flags and not (broker_trade_allowed and broker_mql_allowed):
         checks.append(
             _warn(
@@ -387,6 +421,10 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
     if "mt5_connection" in names or "bridge_mt5_feed" in names:
         actions.append(
             "On the MT5 host, compile and reattach mt5_bridge/ApexBridgeEA.mq5, enable WebRequest for http://127.0.0.1:8000, and enable AutoTrading/Allow Algo Trading so terminal_connected and trade_allowed flags turn true."
+        )
+    if "bridge_account_equity" in names:
+        actions.append(
+            "Confirm the MT5 account is funded/logged in and that ApexBridgeEA reports non-zero ACCOUNT_BALANCE/ACCOUNT_EQUITY before allowing live sizing or funded-mode calculations."
         )
     if "required_env" in names:
         missing_env: set[str] = set()

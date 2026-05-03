@@ -90,11 +90,16 @@ def _bridge_summary(settings: Any) -> dict[str, Any]:
         port = int(dashboard_config.get("bind_port") or dashboard_config.get("port") or port)
     health = collect_bridge_health(host, port, timeout_seconds=3.0)
     broker = health.get("broker_connectivity") if isinstance(health.get("broker_connectivity"), dict) else {}
+    account_snapshot = health.get("latest_account_snapshot") if isinstance(health.get("latest_account_snapshot"), dict) else {}
     return {
         "health_ok": bool(health.get("ok")) and str(health.get("bridge_status", "")).upper() == "UP",
         "bridge_status": health.get("bridge_status"),
         "account": broker.get("account"),
         "magic": broker.get("magic"),
+        "account_equity": account_snapshot.get("equity"),
+        "account_balance": account_snapshot.get("balance"),
+        "account_free_margin": account_snapshot.get("free_margin"),
+        "account_snapshot_updated_at": account_snapshot.get("updated_at"),
         "ea_polling_fresh": bool(broker.get("ea_polling_fresh")),
         "terminal_connected": broker.get("terminal_connected"),
         "terminal_trade_allowed": broker.get("terminal_trade_allowed"),
@@ -121,6 +126,12 @@ def _build_report(*, send_telegram_test: bool) -> dict[str, Any]:
         blockers.append("bridge_health_down")
     if not bridge["ea_polling_fresh"]:
         blockers.append("mt5_ea_not_polling")
+    if bridge["ea_polling_fresh"] and bridge.get("account_equity") is not None:
+        try:
+            if float(bridge.get("account_equity") or 0.0) <= 0.0:
+                blockers.append("mt5_account_equity_zero")
+        except (TypeError, ValueError):
+            blockers.append("mt5_account_equity_zero")
     if not telegram["bot_identity_ok"]:
         blockers.append("telegram_bot_identity_failed")
     if not telegram["chat_id_present"]:
@@ -151,6 +162,8 @@ def _next_actions(blockers: list[str], warnings: list[str]) -> list[str]:
         actions.append("./scripts/start_local_mac.sh")
     if "mt5_ea_not_polling" in blockers:
         actions.append("Confirm MT5 has ApexBridgeEA attached and WebRequest allowed for http://127.0.0.1:8000.")
+    if "mt5_account_equity_zero" in blockers:
+        actions.append("Confirm the MT5 account is funded/logged in and that ApexBridgeEA reports non-zero ACCOUNT_BALANCE/ACCOUNT_EQUITY.")
     if "telegram_chat_id_missing" in blockers:
         actions.append("Open https://t.me/Nexus_vantage_trader_bot and send /start.")
     if "legacy_ea_polling_without_explicit_permission_flags" in warnings:
@@ -167,6 +180,7 @@ def _print_human(report: dict[str, Any]) -> None:
     print(
         "Bridge/MT5: "
         f"{bridge.get('bridge_status')} account={bridge.get('account')} "
+        f"equity={bridge.get('account_equity')} "
         f"ea_polling_fresh={bridge.get('ea_polling_fresh')} "
         f"terminal_connected={bridge.get('terminal_connected')} "
         f"last_poll_age={bridge.get('last_poll_age_seconds')}"

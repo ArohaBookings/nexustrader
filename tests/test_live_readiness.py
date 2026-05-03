@@ -42,6 +42,7 @@ def test_live_readiness_ready_when_all_hard_gates_pass() -> None:
             "ok": True,
             "bridge_status": "UP",
             "broker_connectivity": {"terminal_connected": True, "terminal_trade_allowed": True, "account": "1"},
+            "latest_account_snapshot": {"account": "1", "balance": 100.0, "equity": 101.0, "free_margin": 95.0},
         },
         telegram_identity={"ok": True, "username": "Nexus_vantage_trader_bot", "is_bot": True},
     )
@@ -80,6 +81,7 @@ def test_live_readiness_accepts_fresh_legacy_ea_polling_with_warning() -> None:
                 "explicit_permission_flags": False,
                 "account": "1",
             },
+            "latest_account_snapshot": {"account": "1", "balance": 100.0, "equity": 101.0, "free_margin": 95.0},
         },
         telegram_identity={"ok": True, "username": "Nexus_vantage_trader_bot", "is_bot": True},
     )
@@ -87,6 +89,37 @@ def test_live_readiness_accepts_fresh_legacy_ea_polling_with_warning() -> None:
     assert report["ready"] is True
     assert "bridge_mt5_feed" not in {item["name"] for item in report["hard_blockers"]}
     assert "bridge_mt5_permission_flags" in {item["name"] for item in report["warnings"]}
+
+
+def test_live_readiness_blocks_zero_equity_bridge_snapshot() -> None:
+    env = {
+        "TELEGRAM_BOT_TOKEN": "set",
+        "TELEGRAM_CHAT_ID": "123",
+        "TELEGRAM_WEBHOOK_SECRET": "secret",
+        "OPENAI_API_KEY": "set",
+        "FINNHUB_API_KEY": "set",
+    }
+    report = build_live_readiness_report(
+        project_root=Path("/tmp/apex"),
+        settings_raw=_settings(),
+        env=env,
+        command_exists=lambda command: command in {"git", "gh", "vercel"},
+        git_probe={"is_repo": True, "remote": "git@github.com:ArohaBookings/nexustrader.git", "branch": "main", "upstream": "origin/main"},
+        gh_auth_probe={"ok": True},
+        vercel_probe={"ok": True, "project_linked": True, "token_present": True},
+        mt5_verification={"ok": True, "account": {"login": 1}, "version": "5"},
+        bridge_health={
+            "ok": True,
+            "bridge_status": "UP",
+            "broker_connectivity": {"terminal_connected": True, "ea_polling_fresh": True, "account": "1"},
+            "latest_account_snapshot": {"account": "1", "balance": 0.0, "equity": 0.0, "free_margin": 0.0},
+        },
+        telegram_identity={"ok": True, "username": "Nexus_vantage_trader_bot", "is_bot": True},
+    )
+
+    blocker_names = {item["name"] for item in report["hard_blockers"]}
+    assert report["ready"] is False
+    assert "bridge_account_equity" in blocker_names
 
 
 def test_live_readiness_blocks_missing_runtime_and_credentials() -> None:
