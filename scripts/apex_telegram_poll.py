@@ -25,6 +25,7 @@ BOT_COMMANDS = [
     {"command": "risk", "description": "Risk and circuit breakers"},
     {"command": "trades", "description": "Recent trades and orders"},
     {"command": "aggression", "description": "Live aggression tier and unlock flow"},
+    {"command": "scaler", "description": "Learning and scaling proof scorecard"},
     {"command": "apex", "description": "Bot diagnostics and scaling state"},
     {"command": "pause", "description": "Pause trading"},
     {"command": "resume", "description": "Resume trading with confirmation"},

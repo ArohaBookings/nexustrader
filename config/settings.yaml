@@ -533,6 +533,17 @@ aggression_controller:
   min_full_expectancy_r: 0.10
   state_file: "data/aggression_controller_state.json"
 
+learning_scaler_scorecard:
+  enabled: true
+  min_real_trades_for_score: 10
+  full_scale_min_trades: 20
+  target_win_rate: 0.50
+  target_expectancy_r: 0.05
+  target_profit_factor: 1.20
+  full_scale_expectancy_r: 0.10
+  max_drawdown_r: 6.0
+  positive_recent_delta_r: 0.01
+
 funded_mode:
   mt5_derived_balance: true
   auto_detect_topups: true

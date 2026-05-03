@@ -8705,6 +8705,7 @@ def run_bot(
                 runtime_metrics_provider=lambda: {key: dict(value) for key, value in symbol_runtime_metrics.items()},
                 telegram_config=settings.raw.get("telegram", {}) if isinstance(settings.raw.get("telegram"), dict) else {},
                 aggression_config=settings.raw.get("aggression_controller", {}) if isinstance(settings.raw.get("aggression_controller"), dict) else {},
+                learning_scaler_config=settings.raw.get("learning_scaler_scorecard", {}) if isinstance(settings.raw.get("learning_scaler_scorecard"), dict) else {},
             )
         except Exception as exc:
             logger.warning(f"Bridge server start failed: {exc}")
@@ -15575,6 +15576,7 @@ def run_bridge_only() -> int:
         runtime_metrics_provider=lambda: {},
         telegram_config=runtime["settings"].raw.get("telegram", {}) if isinstance(runtime["settings"].raw.get("telegram"), dict) else {},
         aggression_config=runtime["settings"].raw.get("aggression_controller", {}) if isinstance(runtime["settings"].raw.get("aggression_controller"), dict) else {},
+        learning_scaler_config=runtime["settings"].raw.get("learning_scaler_scorecard", {}) if isinstance(runtime["settings"].raw.get("learning_scaler_scorecard"), dict) else {},
     )
     return 0
 

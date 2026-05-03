@@ -211,6 +211,8 @@ class ApexTelegramResponder:
             return self._result(chat_id, user_id, format_risk(dashboard_data))
         if lower in {"/trades", "trades"}:
             return self._result(chat_id, user_id, format_trades(dashboard_data))
+        if lower in {"/scaler", "scaler", "learning scaler", "quick scaler", "quickest scaler"}:
+            return self._result(chat_id, user_id, format_scaler(dashboard_data))
         if lower in {"/aggression", "aggression", "aggression status", "/aggression status"}:
             return self._result(chat_id, user_id, format_aggression(dashboard_data))
         if _aggression_unlock_requested(raw):
@@ -230,7 +232,7 @@ class ApexTelegramResponder:
                 confirmation_required=True,
                 parse_mode=self.config.parse_mode,
             )
-        if lower in {"/apex", "/intel", "apex", "intel"} or re.search(r"\b(thinking|edge|scale|100k|intelligence|apex|repair|self[- ]?heal)\b", raw, re.I):
+        if lower in {"/apex", "/intel", "apex", "intel"} or re.search(r"\b(thinking|edge|scale|100k|intelligence|apex|repair|self[- ]?heal|world.?class|quick.?learner|quick.?scaler)\b", raw, re.I):
             return self._result(chat_id, user_id, format_apex(dashboard_data))
         if re.search(r"\b(increase|more|raise|boost).*\b(frequency|trades|entries)\b|\bfrequency\b.*\b(xau|btc|gold)\b", raw, re.I):
             return self._result(chat_id, user_id, format_frequency_policy(dashboard_data))
@@ -546,10 +548,34 @@ def format_frequency_policy(dashboard_data: Mapping[str, Any]) -> str:
     )
 
 
+def format_scaler(dashboard_data: Mapping[str, Any]) -> str:
+    summary = _record(dashboard_data.get("summary"))
+    scaler = _record(dashboard_data.get("learning_scaler_scorecard") or summary.get("learning_scaler_scorecard"))
+    if not scaler:
+        return "<b>Learning / Scaling Scorecard</b>\nNo scorecard telemetry is available yet."
+    live = _record(scaler.get("live_evidence"))
+    bucket = _record(scaler.get("bucket"))
+    why_not = [str(item) for item in _sequence(scaler.get("why_not_world_class"))]
+    return _html_lines(
+        "<b>Learning / Scaling Scorecard</b>",
+        [
+            f"Status: <code>{_esc(scaler.get('status', 'unknown'))}</code> | Claim: <code>{_esc(scaler.get('claim', 'not_proven_world_class_yet'))}</code>",
+            f"Learner score: <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}%</code> | Scaler score: <code>{_number(scaler.get('quick_scaler_score'), 0.0):.1f}%</code>",
+            f"Live trades: <code>{int(_number(live.get('trade_count'), 0.0))}</code> | WR: <code>{_pct(_number(live.get('win_rate'), 0.0))}</code> | Exp: <code>{_number(live.get('expectancy_r'), 0.0):.3f}R</code>",
+            f"PF: <code>{_number(live.get('profit_factor'), 0.0):.2f}</code> | Max DD: <code>{_number(live.get('max_drawdown_r'), 0.0):.2f}R</code> | Recent delta: <code>{_number(scaler.get('recent_delta_expectancy_r'), 0.0):.3f}R</code>",
+            f"Tier: <code>{_esc(scaler.get('tier', 'UNKNOWN'))}</code> | Bucket left: <code>{int(_number(bucket.get('remaining'), 0.0))}/{int(_number(bucket.get('cap'), 0.0))}</code>",
+            "Why not world-class yet: <code>" + _esc(", ".join(why_not[:6]) or "none") + "</code>",
+            f"Next safe action: <code>{_esc(scaler.get('next_safe_action', 'collect_live_evidence'))}</code>",
+            "Only real closed trades prove scaling readiness. Shadow trades stay diagnostic.",
+        ],
+    )
+
+
 def format_aggression(dashboard_data: Mapping[str, Any]) -> str:
     summary = _record(dashboard_data.get("summary"))
     controller = _record(dashboard_data.get("aggression_controller") or summary.get("aggression_controller"))
     live = _record(dashboard_data.get("live_evidence") or controller.get("live_evidence"))
+    scaler = _record(dashboard_data.get("learning_scaler_scorecard") or summary.get("learning_scaler_scorecard"))
     promotion = _record(controller.get("promotion"))
     blockers = [str(item) for item in _sequence(controller.get("blockers"))]
     why_not_full = [
@@ -571,6 +597,7 @@ def format_aggression(dashboard_data: Mapping[str, Any]) -> str:
             f"Live trades: <code>{int(_number(live.get('trade_count'), 0.0))}</code> | Win rate: <code>{_pct(_number(live.get('win_rate'), 0.0))}</code> | Expectancy: <code>{_number(live.get('expectancy_r'), 0.0):.3f}R</code>",
             f"Profit factor: <code>{_number(live.get('profit_factor'), 0.0):.2f}</code> | Max DD: <code>{_number(live.get('max_drawdown_r'), 0.0):.2f}R</code>",
             f"Promotion: proven=<code>{bool(promotion.get('proven_ready'))}</code> full=<code>{bool(promotion.get('full_ready'))}</code>",
+            f"Learner/scaler: <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}%</code> / <code>{_number(scaler.get('quick_scaler_score'), 0.0):.1f}%</code> | <code>{_esc(scaler.get('status', 'unknown'))}</code>",
             "Blockers: <code>" + _esc(", ".join(blockers[:5]) or "none") + "</code>",
             "Why not full: <code>" + _esc(", ".join(why_not_full[:5]) or "none") + "</code>",
             "Shadow trades do not unlock promotion. Hard rails still block every tier.",
@@ -601,11 +628,13 @@ def format_apex(dashboard_data: Mapping[str, Any]) -> str:
     training = _record(dashboard_data.get("training_bootstrap_status") or edge.get("training_bootstrap_status"))
     promotion = _record(dashboard_data.get("promotion_audit") or edge.get("promotion_audit"))
     pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
+    scaler = _record(dashboard_data.get("learning_scaler_scorecard") or _record(dashboard_data.get("summary")).get("learning_scaler_scorecard"))
     return _html_lines(
         "<b>Institutional Apex</b>",
         [
             f"Readiness: <code>{_esc(apex.get('readiness', 'unknown'))}</code> | Grade: <code>{_number(apex.get('grade_pct'), 0.0):.1f}%</code>",
             _esc(apex.get("summary", "")),
+            f"Learning/scaling: <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}%</code> / <code>{_number(scaler.get('quick_scaler_score'), 0.0):.1f}%</code> | <code>{_esc(scaler.get('status', 'unknown'))}</code>",
             f"Market mastery: <code>{_pct(_number(_record(apex.get('market_mastery')).get('score'), 0.0))}</code>",
             f"Data fusion: <code>{_pct(_number(_record(apex.get('data_fusion')).get('consensus_score'), 0.0))}</code>",
             f"Anti-overfit: <code>{_esc(promotion.get('reason') or _record(apex.get('anti_overfit')).get('reason', 'unknown'))}</code>",
@@ -621,6 +650,7 @@ def local_explanation(question: str, dashboard_data: Mapping[str, Any]) -> str:
     apex = _record(dashboard_data.get("institutional_apex"))
     edge = _record(dashboard_data.get("institutional_intelligence"))
     summary = _record(dashboard_data.get("summary"))
+    scaler = _record(dashboard_data.get("learning_scaler_scorecard") or summary.get("learning_scaler_scorecard"))
     symbols = [_record(item) for item in _sequence(dashboard_data.get("symbols"))]
     pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
     priority = [_record(item) for item in _sequence(pipeline.get("priority_symbols"))]
@@ -638,6 +668,7 @@ def local_explanation(question: str, dashboard_data: Mapping[str, Any]) -> str:
         [
             f"Question: <code>{_esc(question)[:500]}</code>",
             f"Readiness: <code>{_esc(apex.get('readiness', 'unknown'))}</code> | Grade: <code>{_number(apex.get('grade_pct'), 0.0):.1f}%</code>",
+            f"Learning/scaling proof: <code>{_esc(scaler.get('status', 'unknown'))}</code> | scores <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}/{_number(scaler.get('quick_scaler_score'), 0.0):.1f}</code>",
             _esc(apex.get("summary", "No institutional snapshot available.")),
             f"Equity: <code>{_money(_number(summary.get('equity'), 0.0))}</code> | Daily state: <code>{_esc(summary.get('current_daily_state', ''))}</code>",
             f"Blocked symbols: <code>{len(blockers)}</code>. Main blockers: <code>{_esc(blocker_summary)}</code>",
@@ -659,6 +690,7 @@ def _help_text() -> str:
             "/risk - drawdown, open risk, repair rails",
             "/trades - open trade management snapshot",
             "/aggression - live tier, 2h cap usage, promotion blockers",
+            "/scaler - learner/scaler proof score and next safe action",
             "/aggression unlock - requires /confirm",
             "/apex - institutional intelligence and self-repair summary",
             "/pause - pause new trading",

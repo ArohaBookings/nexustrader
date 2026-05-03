@@ -52,6 +52,7 @@ from src.execution import (
 from src.edge_gated_apex import build_edge_gated_apex_policy
 from src.institutional_apex import build_institutional_apex_snapshot
 from src.lane_governor import evaluate_execution_quality_gate
+from src.learning_scaler import build_learning_scaler_scorecard
 from src.logger import ApexLogger
 from src.mt5_client import OrderResult
 from src.omega_regime import OmegaRegimeDetector
@@ -4761,6 +4762,7 @@ def create_bridge_app(
     strategy_optimizer: StrategyOptimizer | None = None,
     telegram_config: dict[str, Any] | None = None,
     aggression_config: dict[str, Any] | None = None,
+    learning_scaler_config: dict[str, Any] | None = None,
 ):
     global _SHARED_OPERATOR_CONTROL_STATE, _SHARED_STARTUP_RUNTIME_STATE
     from fastapi import FastAPI, Header, HTTPException, Request
@@ -5771,6 +5773,7 @@ def create_bridge_app(
             "promotion_audit": dict(_record_for_telegram(dashboard_data.get("promotion_audit"))),
             "aggression_controller": dict(_record_for_telegram(dashboard_data.get("aggression_controller"))),
             "live_evidence": dict(_record_for_telegram(dashboard_data.get("live_evidence"))),
+            "learning_scaler_scorecard": dict(_record_for_telegram(dashboard_data.get("learning_scaler_scorecard"))),
             "live_shadow_gap": dict(_record_for_telegram(dashboard_data.get("live_shadow_gap"))),
             "xau_btc_opportunity_pipeline": dict(_record_for_telegram(dashboard_data.get("xau_btc_opportunity_pipeline"))),
             "top_symbols": list(dashboard_data.get("symbols") or [])[:12],
@@ -10950,6 +10953,12 @@ def create_bridge_app(
             equity=float(current_equity or 0.0),
             hard_blockers=hard_blockers,
         )
+        learning_scaler_scorecard = build_learning_scaler_scorecard(
+            rollout_stats=current_rollout_stats,
+            aggression_snapshot=aggression_snapshot,
+            account_scaling={"equity": float(current_equity or 0.0)},
+            raw_config=learning_scaler_config if isinstance(learning_scaler_config, dict) else {},
+        )
         return {
             "ok": True,
             "time": _iso_now(),
@@ -11017,6 +11026,7 @@ def create_bridge_app(
             "aggression_controller": aggression_snapshot,
             "live_evidence": aggression_snapshot.get("live_evidence", {}),
             "why_not_full_aggression": list(aggression_snapshot.get("why_not_full_aggression", [])),
+            "learning_scaler_scorecard": learning_scaler_scorecard,
             "maintenance_runtime": dict(maintenance_runtime_state),
             "trading_day_key_now": str(getattr(risk_state, "trading_day_key", "") or ""),
             "closed_trades_today": int(getattr(risk_state, "trades_today", 0) or 0),
@@ -11421,6 +11431,12 @@ def create_bridge_app(
             equity=float(account_scaling_summary.get("equity") or 0.0),
             hard_blockers=aggression_hard_blockers,
         )
+        learning_scaler_scorecard = build_learning_scaler_scorecard(
+            rollout_stats=current_rollout_stats,
+            aggression_snapshot=aggression_snapshot,
+            account_scaling=account_scaling_summary,
+            raw_config=learning_scaler_config if isinstance(learning_scaler_config, dict) else {},
+        )
         return {
             "ok": True,
             "time": _iso_now(),
@@ -11488,6 +11504,7 @@ def create_bridge_app(
             "aggression_controller": aggression_snapshot,
             "live_evidence": aggression_snapshot.get("live_evidence", {}),
             "why_not_full_aggression": list(aggression_snapshot.get("why_not_full_aggression", [])),
+            "learning_scaler_scorecard": learning_scaler_scorecard,
             "latest_account_snapshot": active_snapshot if isinstance(active_snapshot, dict) else queue.latest_account_snapshot(),
             "recent_account_snapshots": queue.recent_account_snapshots(limit=20),
             "active_account_snapshots": queue.recent_account_snapshots(limit=20, account=active_account, magic=active_magic)
@@ -13855,6 +13872,7 @@ def create_bridge_app(
             "trajectory_forecast": {},
             "xau_btc_opportunity_pipeline": {},
             "live_shadow_gap": {},
+            "learning_scaler_scorecard": {},
             "events": [],
             "dashboard_error": {"message": str(error or "")} if error else {},
         }
@@ -14531,6 +14549,16 @@ def create_bridge_app(
             orchestrator_config=orchestrator_config if isinstance(orchestrator_config, dict) else {},
             xau_btc_trajectory_stats=xau_btc_trajectory_stats,
         )
+        learning_scaler_scorecard = dict(
+            stats_payload.get("learning_scaler_scorecard")
+            or health_payload.get("learning_scaler_scorecard")
+            or build_learning_scaler_scorecard(
+                rollout_stats=stats_payload.get("current_rollout_stats", {}),
+                aggression_snapshot=stats_payload.get("aggression_controller", {}),
+                account_scaling=account_scaling_payload,
+                raw_config=learning_scaler_config if isinstance(learning_scaler_config, dict) else {},
+            )
+        )
         return {
             "meta": {
                 "read_only": bool(dashboard_policy.read_only),
@@ -14601,6 +14629,7 @@ def create_bridge_app(
                 "aggression_controller": stats_payload.get("aggression_controller", health_payload.get("aggression_controller", {})),
                 "live_evidence": stats_payload.get("live_evidence", health_payload.get("live_evidence", {})),
                 "why_not_full_aggression": stats_payload.get("why_not_full_aggression", health_payload.get("why_not_full_aggression", [])),
+                "learning_scaler_scorecard": learning_scaler_scorecard,
                 "top_earning_pairs_today": pair_day_scoreboard.get("top_earning_pairs_today", []),
                 "top_losing_pairs_today": pair_day_scoreboard.get("top_losing_pairs_today", []),
             },
@@ -14628,6 +14657,7 @@ def create_bridge_app(
             "aggression_controller": stats_payload.get("aggression_controller", health_payload.get("aggression_controller", {})),
             "live_evidence": stats_payload.get("live_evidence", health_payload.get("live_evidence", {})),
             "why_not_full_aggression": stats_payload.get("why_not_full_aggression", health_payload.get("why_not_full_aggression", [])),
+            "learning_scaler_scorecard": learning_scaler_scorecard,
             "funded_mission": edge_apex_payload.get("funded_mission", {}),
             "trajectory_forecast": edge_apex_payload.get("trajectory_forecast", {}),
             "xau_btc_opportunity_pipeline": edge_apex_payload.get("xau_btc_opportunity_pipeline", {}),
@@ -14763,6 +14793,7 @@ def create_bridge_app(
       if(!data.xau_grid || typeof data.xau_grid!=='object') data.xau_grid={};
       if(!data.ai_summary || typeof data.ai_summary!=='object') data.ai_summary={};
       if(!data.institutional_apex || typeof data.institutional_apex!=='object') data.institutional_apex={};
+      if(!data.learning_scaler_scorecard || typeof data.learning_scaler_scorecard!=='object') data.learning_scaler_scorecard={};
       if(!data.summary.operator_control_state || typeof data.summary.operator_control_state!=='object') data.summary.operator_control_state={};
       if(!data.dashboard_error || typeof data.dashboard_error!=='object') data.dashboard_error={};
       return data;
@@ -14782,10 +14813,13 @@ def create_bridge_app(
     }
     function renderTabs(){const wrap=document.getElementById("tabs"); wrap.innerHTML=tabs.map((tab,i)=>`<button class="tab ${i===0?'active':''}" data-tab="${tab}">${tab}</button>`).join(""); wrap.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>activateTab(btn.dataset.tab));}
     function activateTab(tab){document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab)); document.querySelectorAll('.section').forEach(el=>el.classList.toggle('active',el.id===`section-${tab}`));}
-    function renderSummary(data){const h=data.health||{}; const s=data.summary||{}; const broker=h.broker_connectivity||{}; const snapshot=(data.stats&&data.stats.latest_account_snapshot)||{}; const ag=data.aggression_controller||s.aggression_controller||{}; document.getElementById("summary").innerHTML=[
+    function renderSummary(data){const h=data.health||{}; const s=data.summary||{}; const broker=h.broker_connectivity||{}; const snapshot=(data.stats&&data.stats.latest_account_snapshot)||{}; const ag=data.aggression_controller||s.aggression_controller||{}; const scaler=data.learning_scaler_scorecard||s.learning_scaler_scorecard||{}; document.getElementById("summary").innerHTML=[
       mkMetric("Bridge",h.bridge_status||s.bridge_status||""),
       mkMetric("Apex Grade",`${Number((data.institutional_apex||{}).grade_pct||0).toFixed(1)}%`),
       mkMetric("Apex Ready",(data.institutional_apex||{}).readiness||""),
+      mkMetric("Learner",`${Number(scaler.quick_learner_score||0).toFixed(1)}%`),
+      mkMetric("Scaler",`${Number(scaler.quick_scaler_score||0).toFixed(1)}%`),
+      mkMetric("Scaler Status",scaler.status||"unknown"),
       mkMetric("Aggression",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'UNLOCKED':'LOCKED'}`),
       mkMetric("2h Entries",`${Number(ag.used||0).toFixed(0)}/${Number(ag.cap||0).toFixed(0)}`),
       mkMetric("Broker",broker.terminal_connected?"CONNECTED":"DISCONNECTED"),
@@ -14876,7 +14910,7 @@ def create_bridge_app(
     function renderApex(data){
       const target=document.getElementById("section-Apex"); if(!target) return;
       const apex=data.institutional_apex||{}; const funded=apex.funded_mission||{}; const account=funded.account||{}; const mt5=apex.mt5_bridge||{}; const mastery=apex.market_mastery||{}; const dims=mastery.dimensions||{}; const fusion=apex.data_fusion||{}; const anti=apex.anti_overfit||{}; const repair=apex.self_repair||{}; const scaling=apex.scaling||{}; const exec=apex.execution||{};
-      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[]; const ag=data.aggression_controller||{}; const live=data.live_evidence||ag.live_evidence||{};
+      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[]; const ag=data.aggression_controller||{}; const live=data.live_evidence||ag.live_evidence||{}; const scaler=data.learning_scaler_scorecard||{};
       const providers=(fusion.providers||[]);
       const topSymbols=(mastery.top_symbols||[]);
       const soft=(repair.soft_blockers||[]);
@@ -14907,10 +14941,14 @@ def create_bridge_app(
             ${mkMetric("Aggression tier",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'unlocked':'locked'}`)}
             ${mkMetric("2h cap left",`${Number(ag.remaining||0).toFixed(0)} / ${Number(ag.cap||0).toFixed(0)}`)}
             ${mkMetric("Live WR / Exp",`${(Number(live.win_rate||0)*100).toFixed(1)}% / ${Number(live.expectancy_r||0).toFixed(3)}R`)}
+            ${mkMetric("Learner score",`${Number(scaler.quick_learner_score||0).toFixed(1)}%`)}
+            ${mkMetric("Scaler score",`${Number(scaler.quick_scaler_score||0).toFixed(1)}%`)}
+            ${mkMetric("Scaler proof",scaler.claim||'not_proven_world_class_yet')}
           </div>
           <div class="table" style="margin-top:12px">${priorityRows.map(item=>`<div class="item"><div class="row"><strong>${esc(item.symbol)}</strong><span class="pill ${bandCls(item.live_gate)}">${esc(item.live_gate||'edge_gated')}</span></div><div class="row"><span class="label">Shadow target / candidate debt</span><span class="value mono">${Number((item.shadow_target_10m||{}).low||0).toFixed(0)}-${Number((item.shadow_target_10m||{}).high||0).toFixed(0)} / ${Number(item.candidate_debt_10m||0).toFixed(0)}</span></div><div class="row"><span class="label">Live last 10m / action</span><span class="value">${Number(item.actual_live_trades_last_10m||0).toFixed(0)} / ${esc(item.recommended_action||'observe')}</span></div></div>`).join('') || '<div class="item">Waiting for priority BTC/XAU telemetry.</div>'}</div>
           <div class="sub" style="margin-top:10px">Live frequency is not forced. Shadow sampling and blocker diagnostics increase first; MT5 risk, funded, drawdown, spread, stale-data, and kill rails stay authoritative.</div>
           <div class="sub" style="margin-top:8px">Full aggression blockers: ${esc((ag.why_not_full_aggression||data.why_not_full_aggression||[]).slice(0,6).join(', ')||'none')}</div>
+          <div class="sub" style="margin-top:8px">Why not world-class yet: ${esc((scaler.why_not_world_class||[]).slice(0,6).join(', ')||'none')} | Next: ${esc(scaler.next_safe_action||'collect_live_evidence')}</div>
         </div>
       </div>
       <div class="two-col">
@@ -20461,6 +20499,7 @@ def start_bridge_background(
     runtime_metrics_provider: Any | None = None,
     telegram_config: dict[str, Any] | None = None,
     aggression_config: dict[str, Any] | None = None,
+    learning_scaler_config: dict[str, Any] | None = None,
 ) -> BridgeServerHandle:
     import uvicorn
 
@@ -20528,6 +20567,7 @@ def start_bridge_background(
         strategy_optimizer=strategy_optimizer,
         telegram_config=telegram_config,
         aggression_config=aggression_config,
+        learning_scaler_config=learning_scaler_config,
     )
     config = uvicorn.Config(app=app, host=host, port=int(port), log_level="warning", access_log=False)
     server = uvicorn.Server(config=config)
@@ -20582,6 +20622,7 @@ def run_bridge_forever(
     runtime_metrics_provider: Any | None = None,
     telegram_config: dict[str, Any] | None = None,
     aggression_config: dict[str, Any] | None = None,
+    learning_scaler_config: dict[str, Any] | None = None,
 ) -> None:
     import uvicorn
 
@@ -20623,6 +20664,7 @@ def run_bridge_forever(
         strategy_optimizer=strategy_optimizer,
         telegram_config=telegram_config,
         aggression_config=aggression_config,
+        learning_scaler_config=learning_scaler_config,
     )
     _log(logger, "info", "bridge_server_forever", host=host, port=port)
     uvicorn.run(app, host=host, port=int(port), log_level="warning", access_log=False)

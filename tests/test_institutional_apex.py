@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.apex_telegram import ApexTelegramConfig, ApexTelegramResponder
 from src.edge_gated_apex import build_edge_gated_apex_policy
 from src.institutional_apex import build_institutional_apex_snapshot
+from src.learning_scaler import build_learning_scaler_scorecard
 
 
 def _dashboard_payload() -> dict:
@@ -121,6 +122,28 @@ def _dashboard_payload() -> dict:
             }
         },
     )
+    aggression = {
+        "enabled": True,
+        "owner_unlocked": False,
+        "tier": "BASE",
+        "cap": 5,
+        "used": 2,
+        "remaining": 3,
+        "next_reset": "2026-05-04T02:00:00+00:00",
+        "blockers": ["telegram_aggression_unlock_required"],
+        "promotion": {"proven_ready": False, "full_ready": False},
+        "live_evidence": {"trade_count": 4, "win_rate": 0.50, "expectancy_r": 0.02, "profit_factor": 1.1, "max_drawdown_r": -1.0},
+        "why_not_full_aggression": ["insufficient_real_closed_trades_for_full"],
+    }
+    scaler = build_learning_scaler_scorecard(
+        rollout_stats={
+            "trade_count": 4,
+            "overall": {"win_rate": 0.50, "expectancy_r": 0.02, "profit_factor": 1.1, "max_drawdown_r": -1.0},
+            "last_20": {"expectancy_r": 0.03},
+        },
+        aggression_snapshot=aggression,
+        account_scaling=stats["account_scaling"],
+    )
     return {
         "summary": {"equity": 104.0, "current_daily_state": "DAILY_NORMAL"},
         "institutional_apex": apex,
@@ -133,21 +156,10 @@ def _dashboard_payload() -> dict:
         "trajectory_forecast": edge["trajectory_forecast"],
         "xau_btc_opportunity_pipeline": edge["xau_btc_opportunity_pipeline"],
         "live_shadow_gap": edge["live_shadow_gap"],
-        "aggression_controller": {
-            "enabled": True,
-            "owner_unlocked": False,
-            "tier": "BASE",
-            "cap": 5,
-            "used": 2,
-            "remaining": 3,
-            "next_reset": "2026-05-04T02:00:00+00:00",
-            "blockers": ["telegram_aggression_unlock_required"],
-            "promotion": {"proven_ready": False, "full_ready": False},
-            "live_evidence": {"trade_count": 4, "win_rate": 0.50, "expectancy_r": 0.02, "profit_factor": 1.1, "max_drawdown_r": -1.0},
-            "why_not_full_aggression": ["insufficient_real_closed_trades_for_full"],
-        },
+        "aggression_controller": aggression,
         "live_evidence": {"trade_count": 4, "win_rate": 0.50, "expectancy_r": 0.02, "profit_factor": 1.1, "max_drawdown_r": -1.0},
         "why_not_full_aggression": ["insufficient_real_closed_trades_for_full"],
+        "learning_scaler_scorecard": scaler,
         "symbols": symbols,
     }
 
@@ -173,12 +185,15 @@ def test_telegram_responder_blocks_trade_placement_and_reports_status() -> None:
     pause = responder.handle_text("/pause", dashboard, chat_id="123")
     kill = responder.handle_text("/kill", dashboard, chat_id="123")
     aggression = responder.handle_text("/aggression", dashboard, chat_id="123")
+    scaler = responder.handle_text("/scaler", dashboard, chat_id="123")
     unlock = responder.handle_text("/aggression unlock", dashboard, chat_id="123")
     natural_unlock = responder.handle_text("go aggressive now", dashboard, chat_id="123")
 
     assert "Blocked" in blocked.text
     assert "APEX Status" in status.text
     assert "Live Aggression" in aggression.text
+    assert "Learning / Scaling Scorecard" in scaler.text
+    assert "not_proven_world_class_yet" in scaler.text
     assert pause.action == "pause_trading"
     assert kill.confirmation_required is True
     assert unlock.action == "unlock_aggression"
