@@ -608,7 +608,7 @@ class NewsEngine:
         resolved_provider = str(provider_name or self.provider).strip().lower()
         resolved_base_url = str(api_base_url or self.api_base_url).strip()
         if resolved_provider == "newsapi" or "newsapi.org" in resolved_base_url.lower():
-            return self._fetch_newsapi_events(now_utc, api_key)
+            return self._fetch_newsapi_events(now_utc, api_key, api_base_url=resolved_base_url)
         if resolved_provider == "finnhub" or "finnhub.io" in resolved_base_url.lower():
             return self._fetch_finnhub_events(now_utc, api_key, api_base_url=resolved_base_url)
         if resolved_provider in {"tradingeconomics", "trading_economics"} or "tradingeconomics.com" in resolved_base_url.lower():
@@ -635,7 +635,8 @@ class NewsEngine:
                 events.append(event)
         return events
 
-    def _fetch_newsapi_events(self, now_utc: datetime, api_key: str) -> list[NewsEvent]:
+    def _fetch_newsapi_events(self, now_utc: datetime, api_key: str, *, api_base_url: str | None = None) -> list[NewsEvent]:
+        resolved_base_url = str(api_base_url or self.api_base_url).strip()
         params = {
             "q": "\"FOMC\" OR \"Fed\" OR \"CPI\" OR \"PCE\" OR \"NFP\" OR \"payrolls\" OR \"GDP\" OR \"ECB\" OR \"BOE\" OR \"BOJ\"",
             "language": "en",
@@ -644,7 +645,7 @@ class NewsEngine:
             "from": (now_utc - timedelta(hours=12)).isoformat(),
             "apiKey": api_key,
         }
-        url = f"{self.api_base_url}?{urlencode(params)}"
+        url = f"{resolved_base_url}?{urlencode(params)}"
         body = self._fetch_url(url)
         payload = json.loads(body)
         if not isinstance(payload, dict):

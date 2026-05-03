@@ -298,6 +298,55 @@ class NewsEngineTests(unittest.TestCase):
         self.assertTrue(requested_urls)
         self.assertIn("apikey=env-key", requested_urls[0])
 
+    def test_newsapi_fallback_uses_fallback_base_url(self) -> None:
+        requested_urls: list[str] = []
+
+        def fake_http_get(url: str) -> str:
+            requested_urls.append(url)
+            if "finnhub.test" in url:
+                raise RuntimeError("primary_down")
+            return json.dumps({"status": "ok", "articles": []})
+
+        original_finnhub = os.environ.get("FINNHUB_API_KEY")
+        original_news = os.environ.get("NEWS_API_KEY")
+        os.environ["FINNHUB_API_KEY"] = "finnhub-key"
+        os.environ["NEWS_API_KEY"] = "news-key"
+        try:
+            with TemporaryDirectory() as tmp_dir:
+                engine = NewsEngine(
+                    cache_path=Path(tmp_dir) / "news_cache.json",
+                    provider="finnhub",
+                    api_base_url="https://finnhub.test/calendar",
+                    api_key_env="FINNHUB_API_KEY",
+                    cache_ttl_seconds=300,
+                    block_high_impact=True,
+                    block_medium_impact=False,
+                    block_window_minutes_before=30,
+                    block_window_minutes_after=15,
+                    fail_open=False,
+                    enabled=True,
+                    fallback_provider="newsapi",
+                    fallback_api_base_url="https://newsapi.org/v2/everything",
+                    fallback_api_key_env="NEWS_API_KEY",
+                    http_get=fake_http_get,
+                    http_retries=0,
+                )
+                engine.is_safe_to_trade("XAUUSD", datetime(2026, 3, 4, 12, 0, tzinfo=timezone.utc))
+        finally:
+            if original_finnhub is None:
+                os.environ.pop("FINNHUB_API_KEY", None)
+            else:
+                os.environ["FINNHUB_API_KEY"] = original_finnhub
+            if original_news is None:
+                os.environ.pop("NEWS_API_KEY", None)
+            else:
+                os.environ["NEWS_API_KEY"] = original_news
+
+        self.assertGreaterEqual(len(requested_urls), 2)
+        self.assertIn("https://finnhub.test/calendar", requested_urls[0])
+        self.assertIn("https://newsapi.org/v2/everything", requested_urls[1])
+        self.assertIn("apiKey=news-key", requested_urls[1])
+
     def test_news_decision_exposes_source_confidence_and_authenticity_risk(self) -> None:
         now = datetime(2026, 3, 4, 13, 20, tzinfo=timezone.utc)
         payload = json.dumps(

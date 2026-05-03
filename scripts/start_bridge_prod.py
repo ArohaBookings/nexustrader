@@ -11,6 +11,22 @@ import time
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on", "live"}
+
+
+def _live_trading_requested(env: dict[str, str]) -> bool:
+    return _truthy(env.get("LIVE_TRADING")) or str(env.get("APEX_MODE", "")).strip().upper() == "LIVE"
+
+
+def _allow_bridge_without_mt5(env: dict[str, str]) -> bool:
+    return _truthy(env.get("APEX_START_BRIDGE_WITHOUT_MT5")) or _truthy(env.get("APEX_ALLOW_BRIDGE_WITHOUT_MT5"))
+
+
+def _should_abort_without_mt5(env: dict[str, str]) -> bool:
+    return _live_trading_requested(env) and not _allow_bridge_without_mt5(env)
+
+
 def _run_verify(env: dict[str, str]) -> bool:
     result = subprocess.run(
         [sys.executable, "-m", "src.main", "--verify"],
@@ -43,6 +59,14 @@ def main() -> int:
             print(f"[APEX] waiting {boot_wait}s for MT5 terminal startup")
             time.sleep(boot_wait)
 
+        if skip_verify and _should_abort_without_mt5(env):
+            print(
+                "[APEX] refusing to skip MT5 verification in LIVE mode; set "
+                "APEX_START_BRIDGE_WITHOUT_MT5=1 only for explicit observation/recovery mode",
+                file=sys.stderr,
+            )
+            return 2
+
         if not skip_verify:
             verify_ok = False
             for attempt in range(verify_retries + 1):
@@ -53,7 +77,14 @@ def main() -> int:
                     print(f"[APEX] MT5 verify not ready, retrying in {verify_sleep}s ({attempt + 1}/{verify_retries})")
                     time.sleep(verify_sleep)
             if not verify_ok:
-                print("[APEX] verify never turned green; starting bridge anyway so it can reconcile when MT5 comes up")
+                if _should_abort_without_mt5(env):
+                    print(
+                        "[APEX] MT5 verify never turned green; refusing to start LIVE bridge without a verified terminal. "
+                        "Set APEX_START_BRIDGE_WITHOUT_MT5=1 only for explicit observation/recovery mode.",
+                        file=sys.stderr,
+                    )
+                    return 2
+                print("[APEX] verify never turned green; starting bridge in observation/recovery mode")
 
         command = [sys.executable, "-m", "src.main", "--bridge-serve"]
         restart_count = 0

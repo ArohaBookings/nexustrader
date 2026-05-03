@@ -841,9 +841,9 @@ news:
     - "new_york_only"
   api_base_url: "https://finnhub.io/api/v1/calendar/economic"
   api_key_env: "FINNHUB_API_KEY"
-  fallback_provider: "tradingeconomics"
-  fallback_api_base_url: "https://api.tradingeconomics.com/calendar"
-  fallback_api_key_env: "TRADINGECONOMICS_API_KEY"
+  fallback_provider: "newsapi"
+  fallback_api_base_url: "https://newsapi.org/v2/everything"
+  fallback_api_key_env: "NEWS_API_KEY"
   log_refresh_seconds: 900
   http_timeout_seconds: 6.0
   http_retries: 2

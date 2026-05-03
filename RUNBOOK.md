@@ -39,6 +39,7 @@ TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
 TELEGRAM_WEBHOOK_SECRET=...
 OPENAI_API_KEY=...
+NEWS_API_KEY=...
 ```
 
 Send `/start` to `@Nexus_vantage_trader_bot`, then verify:
@@ -94,6 +95,8 @@ Researched platform constraints:
 - MT5 Python `initialize()` connects to a MetaTrader terminal executable such as `metatrader64.exe`; this is why the live execution worker belongs on the Windows MT5 VPS/VM, not Vercel serverless.
 - Telegram webhook requests should be protected with `secret_token`, which Telegram sends as `X-Telegram-Bot-Api-Secret-Token`.
 - Vercel can deploy dashboard/webhook surfaces after CLI auth/project linking, but it must not replace the long-running MT5 bridge process.
+
+Production bridge startup is fail-closed in live mode. If MT5 verification does not turn green, `scripts/start_bridge_prod.py` exits instead of starting a live bridge. Use `APEX_START_BRIDGE_WITHOUT_MT5=1` only for explicit dashboard observation or recovery mode, not for live execution sign-off.
 
 ## Configure broker symbol/stop rules
 
