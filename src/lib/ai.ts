@@ -16,10 +16,12 @@ export async function explainBotStatus(question: string) {
   const symbols = (overview.symbols as Record<string, unknown>[]).slice(0, 20);
   const risks = (overview.risks as Record<string, unknown>[]).slice(0, 10);
   const trades = (overview.trades as Record<string, unknown>[]).slice(0, 10);
+  const funded = overview.funded;
+  const intelligence = overview.intelligence;
   const client = getOpenAIClient();
 
   if (!client) {
-    return localExplanation(question, bot, symbols, risks, trades);
+    return localExplanation(question, bot, symbols, risks, trades, funded, intelligence);
   }
 
   const response = await client.responses.create({
@@ -28,7 +30,7 @@ export async function explainBotStatus(question: string) {
       {
         role: "system",
         content:
-          "You are Nexus Trader's operator assistant. Give concise status explanations from telemetry only. Do not reveal hidden chain-of-thought. Do not place trades. Do not recommend increasing leverage, bypassing risk controls, or changing strategy parameters. Allowed operational actions are pause, resume with confirmation, kill switch with confirmation, and refresh state only.",
+          "You are Nexus Trader's funded-account operator assistant. Understand normal English, answer from telemetry only, and be direct. Focus on funded pass risk, account protection, blockers, data quality, anti-overfit gates, self-repair actions, and safe scaling caps. Do not reveal hidden chain-of-thought. Do not place trades. Do not recommend increasing leverage, bypassing risk controls, or changing strategy parameters. Allowed operational actions are pause, resume with confirmation, kill switch with confirmation, refresh state, and self-repair refresh for soft blockers only.",
       },
       {
         role: "user",
@@ -38,11 +40,13 @@ export async function explainBotStatus(question: string) {
           symbols,
           risks,
           trades,
+          funded,
+          intelligence,
         }),
       },
     ],
   });
-  return response.output_text || localExplanation(question, bot, symbols, risks, trades);
+  return response.output_text || localExplanation(question, bot, symbols, risks, trades, funded, intelligence);
 }
 
 function localExplanation(
@@ -51,11 +55,19 @@ function localExplanation(
   symbols: Record<string, unknown>[],
   risks: Record<string, unknown>[],
   trades: Record<string, unknown>[],
+  funded?: unknown,
+  intelligence?: unknown,
 ) {
   const blocked = symbols.filter((symbol) => String(symbol.blocker ?? "").length > 0);
+  const fundedStatus = record(record(funded).status);
+  const intel = record(intelligence);
+  const repair = record(intel.selfRepair);
+  const anti = record(intel.antiOverfit);
   const lines = [
     `Nexus status for: ${question}`,
     `Equity: ${bot.equity ?? "unknown"} | Daily PnL: ${bot.pnlToday ?? "unknown"} | Kill state: ${bot.killState ?? "unknown"}`,
+    `Funded: ${fundedStatus.status ?? "disabled"} | needed ${fundedStatus.neededToPass ?? "unknown"} | daily buffer ${fundedStatus.dailyLossRemainingUsd ?? "unknown"} | throttle ${fundedStatus.riskThrottle ?? "unknown"}`,
+    `Apex readiness: ${intel.readiness ?? "unknown"} | self-repair ${repair.status ?? "unknown"} | overfit gate ${anti.reason ?? "unknown"}`,
     `Active symbols: ${symbols.length}; blocked: ${blocked.length}; recent risk events: ${risks.length}; recent trades: ${trades.length}.`,
   ];
   if (blocked.length) {
@@ -65,3 +77,6 @@ function localExplanation(
   return lines.join("\n");
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}

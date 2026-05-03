@@ -94,6 +94,9 @@ function toIngest({ health, stats, dashboard }) {
         mt5_account: record(stats.latest_account_snapshot || account),
         account_scaling: record(stats.account_scaling),
         risk_state: record(stats.risk_state),
+        data_sources: record(stats.data_sources || dashboard.data_sources || dashboard.providers),
+        market_context: record(stats.market_context || dashboard.market_context),
+        learning: record(stats.learning || stats.self_evolution || dashboard.learning),
       },
     },
     symbols: pairs.map((pair) => ({

@@ -1,9 +1,12 @@
 {
   "crons": [
     {
+      "path": "/api/self-repair",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/janitor",
       "schedule": "0 */6 * * *"
     }
   ]
 }
-

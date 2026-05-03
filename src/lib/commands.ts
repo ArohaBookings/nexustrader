@@ -8,6 +8,7 @@ import {
   getTrades,
   markCommandExecuted,
 } from "@/lib/repository";
+import { runSelfRepairAudit } from "@/lib/self-repair";
 import { usd, percent } from "@/lib/utils";
 
 type CommandContext = {
@@ -41,6 +42,18 @@ export async function handleTelegramCommand(context: CommandContext) {
 
   if (lower === "/status" || lower === "status") {
     return formatStatus(await getOverview());
+  }
+
+  if (lower === "/funded" || lower === "funded" || /\bfunded\b.*\b(pass|target|account|status)\b/i.test(text)) {
+    return formatFunded(await getOverview());
+  }
+
+  if (lower === "/intel" || lower === "/apex" || /\b(intel|intelligence|thinking|edge|scale|100k)\b/i.test(text)) {
+    return formatIntel(await getOverview());
+  }
+
+  if (lower === "/repair" || /\b(repair|fix|self[- ]?heal|unstick)\b/i.test(text)) {
+    return formatRepair(await runSelfRepairAudit("telegram"));
   }
 
   if (lower === "/risk" || lower === "risk") {
@@ -100,11 +113,15 @@ const ACTIONS_BY_BRIDGE_ACTION: Record<BridgeAction, true> = {
 function formatStatus(overview: Awaited<ReturnType<typeof getOverview>>) {
   const bot = overview.bot as Record<string, unknown>;
   const symbols = overview.symbols as Record<string, unknown>[];
+  const funded = (overview.funded?.status ?? {}) as Record<string, unknown>;
+  const intelligence = (overview.intelligence ?? {}) as Record<string, unknown>;
   return [
     "*Nexus Status*",
     `Equity: ${usd(Number(bot.equity ?? 0))}`,
     `Daily PnL: ${usd(Number(bot.pnlToday ?? 0))}`,
     `Drawdown: ${percent(Number(bot.drawdownPct ?? 0))}`,
+    `Funded: ${funded.status ?? "disabled"} | Needed: ${usd(Number(funded.neededToPass ?? 0))} | Daily buffer: ${usd(Number(funded.dailyLossRemainingUsd ?? 0))}`,
+    `Apex readiness: ${intelligence.readiness ?? "unknown"} | Grade: ${percent(Number(intelligence.systemGrade ?? 0))}`,
     `Session: ${bot.session ?? "unknown"} | Kill: ${bot.killState ?? "unknown"} | Queue: ${bot.queueDepth ?? 0}`,
     `Symbols: ${symbols.length}`,
   ].join("\n");
@@ -125,6 +142,54 @@ function formatRisk(risk: Awaited<ReturnType<typeof getRisk>>) {
   ].join("\n");
 }
 
+function formatFunded(overview: Awaited<ReturnType<typeof getOverview>>) {
+  const status = (overview.funded?.status ?? {}) as Record<string, unknown>;
+  const account = (status.account ?? {}) as Record<string, unknown>;
+  const intelligence = (overview.intelligence ?? {}) as Record<string, unknown>;
+  const mission = (intelligence.fundedMission ?? {}) as Record<string, unknown>;
+  return [
+    "*Funded Mission*",
+    `Account: ${account.account ?? "not linked"} | Source: ${status.mt5Derived ? "MT5 bridge" : "fallback"}`,
+    `Status: ${status.status ?? "disabled"} | Guard: ${status.fundedGuardReason ?? "unknown"}`,
+    `Equity: ${usd(Number(account.equity ?? 0))} | Target: ${usd(Number(status.targetEquity ?? 0))} | Needed: ${usd(Number(status.neededToPass ?? 0))}`,
+    `Daily buffer: ${usd(Number(status.dailyLossRemainingUsd ?? 0))} (${percent(Number(status.dailyBufferPct ?? 0))})`,
+    `Overall buffer: ${usd(Number(status.maxLossRemainingUsd ?? 0))} (${percent(Number(status.maxBufferPct ?? 0))})`,
+    `Risk throttle: ${percent(Number(status.riskThrottle ?? 1))} | Max risk/trade: ${usd(Number(status.maxRiskPerTradeUsd ?? 0))}`,
+    `Mission: ${mission.guardReason ?? "waiting"}`,
+  ].join("\n");
+}
+
+function formatIntel(overview: Awaited<ReturnType<typeof getOverview>>) {
+  const intelligence = overview.intelligence as Record<string, unknown>;
+  const funded = record(intelligence.fundedMission);
+  const repair = record(intelligence.selfRepair);
+  const anti = record(intelligence.antiOverfit);
+  const data = record(intelligence.dataFusion);
+  const scaling = record(intelligence.scaling);
+  return [
+    "*Institutional Apex Intel*",
+    `Readiness: ${intelligence.readiness ?? "unknown"} | Grade: ${percent(Number(intelligence.systemGrade ?? 0))}`,
+    String(intelligence.summary ?? "No summary available."),
+    `Funded needed: ${usd(Number(funded.neededToPass ?? 0))} | Daily buffer: ${usd(Number(funded.dailyBufferUsd ?? 0))}`,
+    `Repair: ${repair.status ?? "unknown"} | Soft: ${array(repair.softBlockers).length} | Hard: ${array(repair.hardRails).length} | Action: ${repair.recommendedBridgeAction ?? "none"}`,
+    `Overfit gate: ${anti.reason ?? "unknown"} | Recent: ${anti.recentSample ?? 0} | Validation: ${anti.validationSample ?? 0}`,
+    `Data consensus: ${percent(Number(data.consensusScore ?? 0))} | Active sources: ${data.activeSources ?? 0}`,
+    `Scaling: ${scaling.aggression ?? "unknown"} | Max risk/trade: ${usd(Number(scaling.maxRiskPerTradeUsd ?? 0))} | Max open trades: ${scaling.maxOpenTrades ?? 0}`,
+  ].join("\n");
+}
+
+function formatRepair(result: Awaited<ReturnType<typeof runSelfRepairAudit>>) {
+  const repair = result.repair as Record<string, unknown>;
+  return [
+    "*Self-Repair Audit*",
+    `Mode: ${result.mode} | Action: ${result.action}`,
+    `Status: ${repair.status ?? "unknown"} | SLA: ${repair.slaMinutes ?? 5}m`,
+    `Soft blockers: ${array(repair.softBlockers).length} | Hard rails: ${array(repair.hardRails).length}`,
+    result.action === "refresh_state" ? `Refresh command: ${result.commandId ?? "issued"}` : `Reason: ${result.reason ?? "no repair needed"}`,
+    "Hard drawdown/funded/kill rails are never auto-overridden.",
+  ].join("\n");
+}
+
 function formatTrades(data: Awaited<ReturnType<typeof getTrades>>) {
   const trades = data.trades as Record<string, unknown>[];
   if (!trades.length) return "*Trades*\nNo recent trades recorded.";
@@ -137,3 +202,10 @@ function formatTrades(data: Awaited<ReturnType<typeof getTrades>>) {
   ].join("\n");
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function array(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}

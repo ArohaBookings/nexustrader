@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { demoOverview } from "@/lib/demo-data";
 import { calculateFundedStatus, DEFAULT_FUNDED_CONFIG, sanitizeFundedConfig, type FundedConfig } from "@/lib/funded-mode";
+import { buildInstitutionalIntelligence } from "@/lib/institutional-intelligence";
 import type { EventInput, FundedConfigInput, IngestPayload } from "@/lib/validation";
 
 type Json = Record<string, unknown>;
@@ -150,7 +151,7 @@ export async function getOverview() {
     const store = memory();
     const bot = store.bots.at(-1) ?? demoOverview.bot;
     const fundedConfig = store.fundedConfig;
-    return {
+    const overview = {
       ...demoOverview,
       bot,
       symbols: latestBySymbol(store.symbols),
@@ -163,6 +164,7 @@ export async function getOverview() {
         status: calculateFundedStatus(fundedConfig, bot),
       },
     };
+    return { ...overview, intelligence: buildInstitutionalIntelligence(overview) };
   }
 
   const db = getDb();
@@ -173,7 +175,7 @@ export async function getOverview() {
   const risks = await db.select().from(riskEvents).orderBy(desc(riskEvents.occurredAt)).limit(50);
   const commands = await db.select().from(commandRequests).orderBy(desc(commandRequests.createdAt)).limit(20);
   const fundedConfig = await getFundedConfig();
-  return {
+  const overview = {
     bot: bot ?? demoOverview.bot,
     symbols: latestBySymbol(symbols as unknown as Json[]),
     trades,
@@ -186,6 +188,7 @@ export async function getOverview() {
       status: calculateFundedStatus(fundedConfig, (bot ?? demoOverview.bot) as unknown as Json),
     },
   };
+  return { ...overview, intelligence: buildInstitutionalIntelligence(overview as unknown as Json) };
 }
 
 export async function getFundedConfig(): Promise<FundedConfig> {

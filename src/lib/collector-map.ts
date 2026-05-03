@@ -63,6 +63,9 @@ export function bridgePayloadToIngest(input: {
         mt5_account: asRecord(stats.latest_account_snapshot ?? account),
         account_scaling: asRecord(stats.account_scaling),
         risk_state: asRecord(stats.risk_state),
+        data_sources: asRecord(stats.data_sources ?? dashboard.data_sources ?? dashboard.providers),
+        market_context: asRecord(stats.market_context ?? dashboard.market_context),
+        learning: asRecord(stats.learning ?? stats.self_evolution ?? dashboard.learning),
       },
     },
     symbols: pairs.map((pair) => ({

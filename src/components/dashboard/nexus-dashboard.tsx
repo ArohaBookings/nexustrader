@@ -50,11 +50,13 @@ type Overview = {
     config: Record<string, unknown>;
     status: Record<string, unknown>;
   };
+  intelligence?: Record<string, unknown>;
 };
 
 const tabs = [
   { id: "overview", label: "Live", icon: Activity },
   { id: "thinking", label: "Thinking", icon: BrainCircuit },
+  { id: "apex", label: "Apex", icon: Sparkles },
   { id: "symbols", label: "Symbols", icon: RadioTower },
   { id: "orders", label: "Orders", icon: CircleDollarSign },
   { id: "risk", label: "Risk", icon: ShieldAlert },
@@ -120,6 +122,7 @@ export function NexusDashboard({ initialOverview }: { initialOverview: Overview 
   const risks = overview.risks ?? [];
   const commands = overview.commands ?? [];
   const equityCurve = overview.equityCurve ?? [];
+  const intelligence = (overview.intelligence ?? {}) as Record<string, unknown>;
   const funded = (overview.funded ?? { config: DEFAULT_FUNDED_CONFIG, status: {} }) as {
     config: Record<string, unknown>;
     status: Record<string, unknown>;
@@ -198,6 +201,7 @@ export function NexusDashboard({ initialOverview }: { initialOverview: Overview 
       <section className="mx-auto mt-5 max-w-7xl pb-10">
         {activeTab === "overview" ? <OverviewPanel overview={overview} openBlockers={openBlockers} chartsReady={chartsReady} /> : null}
         {activeTab === "thinking" ? <ThinkingPanel symbols={symbols} risks={risks} /> : null}
+        {activeTab === "apex" ? <ApexPanel intelligence={intelligence} /> : null}
         {activeTab === "symbols" ? <SymbolsPanel symbols={symbols} /> : null}
         {activeTab === "orders" ? <OrdersPanel orders={orders} trades={trades} chartsReady={chartsReady} /> : null}
         {activeTab === "risk" ? <RiskPanel bot={bot} risks={risks} /> : null}
@@ -268,6 +272,122 @@ function ThinkingPanel({ symbols, risks }: { symbols: Record<string, unknown>[];
       </Panel>
       <Panel title="Recent Guards" icon={ShieldCheck}>
         <EventList rows={risks.slice(0, 8)} empty="No recent risk guards." />
+      </Panel>
+    </div>
+  );
+}
+
+function ApexPanel({ intelligence }: { intelligence: Record<string, unknown> }) {
+  const funded = asRecord(intelligence.fundedMission);
+  const market = asRecord(intelligence.marketMastery);
+  const data = asRecord(intelligence.dataFusion);
+  const anti = asRecord(intelligence.antiOverfit);
+  const repair = asRecord(intelligence.selfRepair);
+  const scaling = asRecord(intelligence.scaling);
+  const execution = asRecord(intelligence.execution);
+  const rows = asArray(market.rows).map(asRecord);
+  const providers = asArray(data.providers).map(asRecord);
+  const softBlockers = asArray(repair.softBlockers).map(asRecord);
+  const hardRails = asArray(repair.hardRails).map(asRecord);
+  const notes = asArray(scaling.notes).map(String);
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Panel title="Institutional Readiness" icon={Sparkles}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Pulse label="Apex Grade" value={percent(n(intelligence.systemGrade))} tone={toneFromScore(n(intelligence.systemGrade))} />
+            <Pulse label="Readiness" value={text(intelligence.readiness, "unknown")} tone={readinessTone(text(intelligence.readiness, ""))} />
+            <Pulse label="Funded Mission" value={text(funded.status, "disabled")} tone={fundedTone(text(funded.status, "disabled"))} />
+            <Pulse label="Data Consensus" value={percent(n(data.consensusScore))} tone={toneFromScore(n(data.consensusScore))} />
+            <Pulse label="Repair SLA" value={`${String(repair.slaMinutes ?? 5)}m / ${text(repair.status, "unknown")}`} tone={softBlockers.length ? "amber" : hardRails.length ? "rose" : "lime"} />
+            <Pulse label="Scaling State" value={text(scaling.aggression, "unknown")} tone={text(scaling.aggression, "") === "locked" ? "rose" : "cyan"} />
+          </div>
+          <p className="mt-4 border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm leading-6 text-cyan-100">
+            {text(intelligence.summary, "Telemetry is waiting for a live bridge snapshot.")}
+          </p>
+        </Panel>
+
+        <Panel title="Funded Scaling Brain" icon={ShieldCheck}>
+          <div className="grid gap-3 md:grid-cols-3">
+            <MiniStat label="Needed to pass" value={usd(n(funded.neededToPass))} />
+            <MiniStat label="Pass progress" value={percent(n(funded.passProgressPct))} />
+            <MiniStat label="Risk throttle" value={percent(n(funded.riskThrottle, 1))} />
+            <MiniStat label="Daily buffer" value={usd(n(funded.dailyBufferUsd))} />
+            <MiniStat label="Overall buffer" value={usd(n(funded.maxBufferUsd))} />
+            <MiniStat label="Max risk/trade" value={usd(n(scaling.maxRiskPerTradeUsd))} />
+            <MiniStat label="Max open risk" value={usd(n(scaling.maxOpenRiskUsd))} />
+            <MiniStat label="Max open trades" value={String(scaling.maxOpenTrades ?? 0)} />
+            <MiniStat label="Funding change" value={text(scaling.fundingChange, "unknown")} />
+          </div>
+          <div className="mt-4 grid gap-2">
+            {notes.map((note) => (
+              <p key={note} className="border border-white/10 bg-white/[0.03] p-3 text-sm text-zinc-300">
+                {note}
+              </p>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Panel title="Market Mastery Matrix" icon={BrainCircuit}>
+          <div className="grid gap-3">
+            {rows.map((row) => {
+              const dimensions = asRecord(row.dimensions);
+              return (
+                <div key={text(row.symbol, "symbol")} className="border border-white/10 bg-white/[0.03] p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-lg font-black text-white">{text(row.symbol, "UNKNOWN")}</p>
+                      <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                        {text(row.regime, "unclassified")} / {text(row.session, "unknown")}
+                      </p>
+                    </div>
+                    <StateBadge state={`${percent(n(row.score))} mastery`} />
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <ProgressLine label="Candle" value={n(dimensions.candle)} tone={toneFromScore(n(dimensions.candle))} />
+                    <ProgressLine label="SMC" value={n(dimensions.smc)} tone={toneFromScore(n(dimensions.smc))} />
+                    <ProgressLine label="Order flow" value={n(dimensions.orderFlow)} tone={toneFromScore(n(dimensions.orderFlow))} />
+                    <ProgressLine label="Microstructure" value={n(dimensions.microstructure)} tone={toneFromScore(n(dimensions.microstructure))} />
+                    <ProgressLine label="MTF confluence" value={n(dimensions.confluence)} tone={toneFromScore(n(dimensions.confluence))} />
+                    <ProgressLine label="Cross-asset" value={n(dimensions.crossAsset)} tone={toneFromScore(n(dimensions.crossAsset))} />
+                  </div>
+                  <p className="mt-3 text-sm leading-5 text-zinc-300">{text(row.thinking, "No diagnostic text received.")}</p>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+
+        <Panel title="Self-Repair / Anti-Overfit" icon={Siren}>
+          <div className="grid gap-3">
+            <Pulse label="Repair State" value={text(repair.status, "unknown")} tone={hardRails.length ? "rose" : softBlockers.length ? "amber" : "lime"} />
+            <Pulse label="Soft Blockers" value={String(softBlockers.length)} tone={softBlockers.length ? "amber" : "lime"} />
+            <Pulse label="Hard Rails" value={String(hardRails.length)} tone={hardRails.length ? "rose" : "lime"} />
+            <Pulse label="Promotion Gate" value={anti.promotionAllowed ? "cleared" : text(anti.reason, "blocked")} tone={anti.promotionAllowed ? "lime" : "amber"} />
+            <Pulse label="Recent Window" value={`${String(anti.recentSample ?? 0)} trades / ${percent(n(anti.recentDelta))}`} tone={n(anti.recentSample) >= 200 ? "lime" : "amber"} />
+            <Pulse label="Validation Window" value={`${String(anti.validationSample ?? 0)} trades / ${percent(n(anti.validationDelta))}`} tone={n(anti.validationSample) >= 100 ? "lime" : "amber"} />
+            <Pulse label="Execution" value={`${percent(n(execution.winRate))} win / ${n(execution.avgSlippageBps).toFixed(2)} bps`} tone={toneFromScore(n(execution.score))} />
+          </div>
+        </Panel>
+      </div>
+
+      <Panel title="Multi-Source Data Fusion" icon={DatabaseZap}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {providers.map((provider) => (
+            <div key={text(provider.id, "provider")} className="border border-white/10 bg-black/35 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-white">{text(provider.label, "Provider")}</p>
+                <StateBadge state={text(provider.status, "missing")} />
+              </div>
+              <p className="font-mono text-sm text-zinc-400">
+                Latency {provider.latencyMs === null || provider.latencyMs === undefined ? "n/a" : `${String(provider.latencyMs)}ms`}
+              </p>
+            </div>
+          ))}
+        </div>
       </Panel>
     </div>
   );
@@ -646,11 +766,12 @@ function PercentField({ label, value, onChange }: { label: string; value: number
   );
 }
 
-function ProgressLine({ label, value, tone }: { label: string; value: number; tone: "cyan" | "lime" | "rose" | "violet" }) {
+function ProgressLine({ label, value, tone }: { label: string; value: number; tone: "cyan" | "lime" | "rose" | "amber" | "violet" }) {
   const colors = {
     cyan: "bg-cyan-300",
     lime: "bg-lime-300",
     rose: "bg-rose-300",
+    amber: "bg-amber-300",
     violet: "bg-violet-300",
   };
   const width = `${Math.max(0, Math.min(100, value * 100))}%`;
@@ -672,6 +793,29 @@ function fundedTone(status: string): "cyan" | "lime" | "rose" | "amber" | "viole
   if (status.includes("defensive") || status.includes("caution") || status.includes("ready")) return "amber";
   if (status.includes("passed") || status.includes("normal")) return "lime";
   return "cyan";
+}
+
+function readinessTone(status: string): "cyan" | "lime" | "rose" | "amber" | "violet" {
+  if (status.includes("hard")) return "rose";
+  if (status.includes("repair") || status.includes("observe")) return "amber";
+  if (status.includes("expand")) return "lime";
+  if (status.includes("protect")) return "violet";
+  return "cyan";
+}
+
+function toneFromScore(score: number): "cyan" | "lime" | "rose" | "amber" | "violet" {
+  if (score >= 0.72) return "lime";
+  if (score >= 0.5) return "amber";
+  if (score <= 0.25) return "rose";
+  return "cyan";
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
 }
 
 function Metric({
