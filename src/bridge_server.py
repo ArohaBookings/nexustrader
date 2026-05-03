@@ -10771,6 +10771,7 @@ def create_bridge_app(
         report = build_performance_report(closed_rows, session_name_resolver=session_name_resolver)
         recent10 = build_performance_report(closed_rows[:10], session_name_resolver=session_name_resolver)
         recent20 = build_performance_report(closed_rows[:20], session_name_resolver=session_name_resolver)
+        pnl_r_values = [_safe_float(row.get("pnl_r"), 0.0) for row in closed_rows[:200] if isinstance(row, dict)]
         uptime_seconds = None
         if started_at_dt is not None:
             uptime_seconds = max(0.0, (utc_now() - started_at_dt).total_seconds())
@@ -10783,6 +10784,7 @@ def create_bridge_app(
             "by_session": dict(report.get("by_session") or {}),
             "last_10": dict(recent10.get("overall") or {}),
             "last_20": dict(recent20.get("overall") or {}),
+            "pnl_r_values": pnl_r_values,
             "trade_count": int(len(closed_rows)),
         }
 
@@ -14820,6 +14822,7 @@ def create_bridge_app(
       mkMetric("Learner",`${Number(scaler.quick_learner_score||0).toFixed(1)}%`),
       mkMetric("Scaler",`${Number(scaler.quick_scaler_score||0).toFixed(1)}%`),
       mkMetric("Scaler Status",scaler.status||"unknown"),
+      mkMetric("Edge Proof",(scaler.statistical_edge||{}).passed?'PASSED':'PENDING'),
       mkMetric("Aggression",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'UNLOCKED':'LOCKED'}`),
       mkMetric("2h Entries",`${Number(ag.used||0).toFixed(0)}/${Number(ag.cap||0).toFixed(0)}`),
       mkMetric("Broker",broker.terminal_connected?"CONNECTED":"DISCONNECTED"),
@@ -14910,7 +14913,7 @@ def create_bridge_app(
     function renderApex(data){
       const target=document.getElementById("section-Apex"); if(!target) return;
       const apex=data.institutional_apex||{}; const funded=apex.funded_mission||{}; const account=funded.account||{}; const mt5=apex.mt5_bridge||{}; const mastery=apex.market_mastery||{}; const dims=mastery.dimensions||{}; const fusion=apex.data_fusion||{}; const anti=apex.anti_overfit||{}; const repair=apex.self_repair||{}; const scaling=apex.scaling||{}; const exec=apex.execution||{};
-      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[]; const ag=data.aggression_controller||{}; const live=data.live_evidence||ag.live_evidence||{}; const scaler=data.learning_scaler_scorecard||{};
+      const edge=data.institutional_intelligence||{}; const training=data.training_bootstrap_status||edge.training_bootstrap_status||{}; const dataQuality=data.data_quality||edge.data_quality||{}; const promotion=data.promotion_audit||edge.promotion_audit||{}; const liveShadow=data.live_shadow_gap||edge.live_shadow_gap||{}; const opportunity=data.xau_btc_opportunity_pipeline||edge.xau_btc_opportunity_pipeline||{}; const priorityRows=opportunity.priority_symbols||[]; const ag=data.aggression_controller||{}; const live=data.live_evidence||ag.live_evidence||{}; const scaler=data.learning_scaler_scorecard||{}; const edgeProof=scaler.statistical_edge||{};
       const providers=(fusion.providers||[]);
       const topSymbols=(mastery.top_symbols||[]);
       const soft=(repair.soft_blockers||[]);
@@ -14944,10 +14947,14 @@ def create_bridge_app(
             ${mkMetric("Learner score",`${Number(scaler.quick_learner_score||0).toFixed(1)}%`)}
             ${mkMetric("Scaler score",`${Number(scaler.quick_scaler_score||0).toFixed(1)}%`)}
             ${mkMetric("Scaler proof",scaler.claim||'not_proven_world_class_yet')}
+            ${mkMetric("Stat proof",edgeProof.passed?'passed':'pending')}
+            ${mkMetric("WR lower",`${(Number(edgeProof.win_rate_lower_bound||0)*100).toFixed(1)}%`)}
+            ${mkMetric("Exp lower",`${Number(edgeProof.expectancy_lower_bound_r||0).toFixed(3)}R`)}
           </div>
           <div class="table" style="margin-top:12px">${priorityRows.map(item=>`<div class="item"><div class="row"><strong>${esc(item.symbol)}</strong><span class="pill ${bandCls(item.live_gate)}">${esc(item.live_gate||'edge_gated')}</span></div><div class="row"><span class="label">Shadow target / candidate debt</span><span class="value mono">${Number((item.shadow_target_10m||{}).low||0).toFixed(0)}-${Number((item.shadow_target_10m||{}).high||0).toFixed(0)} / ${Number(item.candidate_debt_10m||0).toFixed(0)}</span></div><div class="row"><span class="label">Live last 10m / action</span><span class="value">${Number(item.actual_live_trades_last_10m||0).toFixed(0)} / ${esc(item.recommended_action||'observe')}</span></div></div>`).join('') || '<div class="item">Waiting for priority BTC/XAU telemetry.</div>'}</div>
           <div class="sub" style="margin-top:10px">Live frequency is not forced. Shadow sampling and blocker diagnostics increase first; MT5 risk, funded, drawdown, spread, stale-data, and kill rails stay authoritative.</div>
           <div class="sub" style="margin-top:8px">Full aggression blockers: ${esc((ag.why_not_full_aggression||data.why_not_full_aggression||[]).slice(0,6).join(', ')||'none')}</div>
+          <div class="sub" style="margin-top:8px">Stat proof blockers: ${esc((edgeProof.reasons||[]).slice(0,6).join(', ')||'none')} | Sample: ${Number(edgeProof.sample_count||0).toFixed(0)}</div>
           <div class="sub" style="margin-top:8px">Why not world-class yet: ${esc((scaler.why_not_world_class||[]).slice(0,6).join(', ')||'none')} | Next: ${esc(scaler.next_safe_action||'collect_live_evidence')}</div>
         </div>
       </div>

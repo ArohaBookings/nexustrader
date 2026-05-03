@@ -543,6 +543,11 @@ learning_scaler_scorecard:
   full_scale_expectancy_r: 0.10
   max_drawdown_r: 6.0
   positive_recent_delta_r: 0.01
+  min_confidence_trades: 30
+  confidence_z: 1.64
+  min_win_rate_lower_bound: 0.40
+  min_expectancy_lower_bound_r: 0.0
+  max_loss_streak_for_confidence: 5
 
 funded_mode:
   mt5_derived_balance: true

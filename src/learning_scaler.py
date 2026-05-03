@@ -16,6 +16,11 @@ class LearningScalerConfig:
     full_scale_expectancy_r: float = 0.10
     max_drawdown_r: float = 6.0
     positive_recent_delta_r: float = 0.01
+    min_confidence_trades: int = 30
+    confidence_z: float = 1.64
+    min_win_rate_lower_bound: float = 0.40
+    min_expectancy_lower_bound_r: float = 0.0
+    max_loss_streak_for_confidence: int = 5
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any] | None) -> "LearningScalerConfig":
@@ -30,6 +35,11 @@ class LearningScalerConfig:
             full_scale_expectancy_r=_number(data.get("full_scale_expectancy_r"), 0.10),
             max_drawdown_r=max(0.01, abs(_number(data.get("max_drawdown_r"), 6.0))),
             positive_recent_delta_r=_number(data.get("positive_recent_delta_r"), 0.01),
+            min_confidence_trades=max(1, int(_number(data.get("min_confidence_trades"), 30))),
+            confidence_z=max(0.01, _number(data.get("confidence_z"), 1.64)),
+            min_win_rate_lower_bound=_bounded(_number(data.get("min_win_rate_lower_bound"), 0.40), 0.0, 1.0),
+            min_expectancy_lower_bound_r=_number(data.get("min_expectancy_lower_bound_r"), 0.0),
+            max_loss_streak_for_confidence=max(1, int(_number(data.get("max_loss_streak_for_confidence"), 5))),
         )
 
 
@@ -51,6 +61,8 @@ def build_learning_scaler_scorecard(
 
     recent_expectancy = _number(last_20.get("expectancy_r", last_10.get("expectancy_r")), live["expectancy_r"])
     recent_delta = recent_expectancy - live["expectancy_r"]
+    sequence = _pnl_sequence(rollout)
+    statistical_edge = _statistical_edge_proof(sequence=sequence, config=config)
     equity = _number(account.get("equity", account.get("balance")), 0.0)
     blockers = [str(item) for item in _sequence(aggression.get("blockers")) if str(item).strip()]
     hard_blockers = [item for item in blockers if item not in {"telegram_aggression_unlock_required", "aggression_bucket_cap_reached"}]
@@ -68,6 +80,8 @@ def build_learning_scaler_scorecard(
         status = "collecting_live_evidence"
     elif not _meets_basic_edge(live, config):
         status = "learning_not_scaling"
+    elif _meets_full_edge(live, config) and not bool(statistical_edge["passed"]):
+        status = "edge_positive_collecting_statistical_proof"
     elif _meets_full_edge(live, config):
         status = "full_scaling_ready_inside_caps"
     else:
@@ -80,12 +94,14 @@ def build_learning_scaler_scorecard(
         hard_blockers=hard_blockers,
         recent_delta=recent_delta,
         equity=equity,
+        statistical_edge=statistical_edge,
     )
     quick_learner_score = _quick_learner_score(
         config=config,
         live=live,
         recent_delta=recent_delta,
         hard_blockers=hard_blockers,
+        statistical_edge=statistical_edge,
     )
     quick_scaler_score = _quick_scaler_score(
         config=config,
@@ -93,6 +109,7 @@ def build_learning_scaler_scorecard(
         aggression=aggression,
         hard_blockers=hard_blockers,
         equity=equity,
+        statistical_edge=statistical_edge,
     )
 
     return {
@@ -102,6 +119,7 @@ def build_learning_scaler_scorecard(
         "quick_scaler_score": round(quick_scaler_score, 1),
         "overall_score": round((quick_learner_score * 0.55) + (quick_scaler_score * 0.45), 1),
         "live_evidence": live,
+        "statistical_edge": statistical_edge,
         "recent_delta_expectancy_r": round(recent_delta, 4),
         "recent_expectancy_r": round(recent_expectancy, 4),
         "equity": round(equity, 2),
@@ -122,6 +140,11 @@ def build_learning_scaler_scorecard(
             "full_scale_expectancy_r": float(config.full_scale_expectancy_r),
             "max_drawdown_r": float(config.max_drawdown_r),
             "positive_recent_delta_r": float(config.positive_recent_delta_r),
+            "min_confidence_trades": int(config.min_confidence_trades),
+            "confidence_z": float(config.confidence_z),
+            "min_win_rate_lower_bound": float(config.min_win_rate_lower_bound),
+            "min_expectancy_lower_bound_r": float(config.min_expectancy_lower_bound_r),
+            "max_loss_streak_for_confidence": int(config.max_loss_streak_for_confidence),
         },
         "why_not_world_class": why_not_world_class,
         "why_not_quick_scaling": why_not_world_class + [item for item in why_not_full if item not in why_not_world_class],
@@ -130,10 +153,11 @@ def build_learning_scaler_scorecard(
             "real_closed_trades_only",
             "positive_expectancy_after_costs",
             "drawdown_inside_limit",
+            "statistical_lower_bounds_positive",
             "no hard MT5, drawdown, funded, stale-data, spread, or kill rails",
         ],
         "claim": (
-            "measured_scaling_ready" if status in {"proven_scaling_ready", "full_scaling_ready_inside_caps"} else
+            "measured_scaling_ready" if status == "full_scaling_ready_inside_caps" else
             "not_proven_world_class_yet"
         ),
     }
@@ -150,6 +174,98 @@ def _live_evidence(*, rollout: Mapping[str, Any], aggression: Mapping[str, Any])
         "profit_factor": _number(raw_live.get("profit_factor", overall.get("profit_factor")), 0.0),
         "max_drawdown_r": _number(raw_live.get("max_drawdown_r", overall.get("max_drawdown_r")), 0.0),
     }
+
+
+def _pnl_sequence(rollout: Mapping[str, Any]) -> list[float]:
+    raw = rollout.get("pnl_r_values")
+    if not isinstance(raw, (list, tuple)):
+        raw = rollout.get("recent_pnl_r_values")
+    sequence: list[float] = []
+    if isinstance(raw, (list, tuple)):
+        for value in raw:
+            parsed = _number(value, math.nan)
+            if math.isfinite(parsed):
+                sequence.append(parsed)
+    return sequence
+
+
+def _statistical_edge_proof(*, sequence: list[float], config: LearningScalerConfig) -> dict[str, Any]:
+    n = len(sequence)
+    wins = sum(1 for value in sequence if value >= 0.0)
+    win_rate = (wins / n) if n else 0.0
+    mean = (sum(sequence) / n) if n else 0.0
+    if n > 1:
+        variance = sum((value - mean) ** 2 for value in sequence) / (n - 1)
+        stdev = math.sqrt(max(0.0, variance))
+        expectancy_lower = mean - (config.confidence_z * stdev / math.sqrt(n))
+    elif n == 1:
+        stdev = 0.0
+        expectancy_lower = min(0.0, mean)
+    else:
+        stdev = 0.0
+        expectancy_lower = 0.0
+    win_lower = _wilson_lower_bound(wins=wins, n=n, z=config.confidence_z)
+    max_dd = _sequence_max_drawdown(sequence)
+    max_loss_streak = _max_loss_streak(sequence)
+    reasons: list[str] = []
+    if n < config.min_confidence_trades:
+        reasons.append("insufficient_trade_sequence_for_confidence")
+    if win_lower < config.min_win_rate_lower_bound:
+        reasons.append("win_rate_lower_bound_below_confidence_gate")
+    if expectancy_lower <= config.min_expectancy_lower_bound_r:
+        reasons.append("expectancy_lower_bound_not_positive")
+    if max_dd > config.max_drawdown_r:
+        reasons.append("sequence_drawdown_too_deep")
+    if max_loss_streak > config.max_loss_streak_for_confidence:
+        reasons.append("loss_streak_too_long_for_confidence")
+    return {
+        "passed": not reasons,
+        "sample_count": int(n),
+        "wins": int(wins),
+        "observed_win_rate": round(win_rate, 4),
+        "win_rate_lower_bound": round(win_lower, 4),
+        "expectancy_mean_r": round(mean, 4),
+        "expectancy_stdev_r": round(stdev, 4),
+        "expectancy_lower_bound_r": round(expectancy_lower, 4),
+        "max_drawdown_r": round(max_dd, 4),
+        "max_loss_streak": int(max_loss_streak),
+        "confidence_z": float(config.confidence_z),
+        "reasons": reasons,
+    }
+
+
+def _wilson_lower_bound(*, wins: int, n: int, z: float) -> float:
+    if n <= 0:
+        return 0.0
+    p = wins / n
+    z2 = z * z
+    denominator = 1.0 + (z2 / n)
+    centre = p + (z2 / (2.0 * n))
+    margin = z * math.sqrt(((p * (1.0 - p)) + (z2 / (4.0 * n))) / n)
+    return _bounded((centre - margin) / denominator, 0.0, 1.0)
+
+
+def _sequence_max_drawdown(sequence: list[float]) -> float:
+    running = 0.0
+    peak = 0.0
+    max_dd = 0.0
+    for value in sequence:
+        running += value
+        peak = max(peak, running)
+        max_dd = max(max_dd, peak - running)
+    return max_dd
+
+
+def _max_loss_streak(sequence: list[float]) -> int:
+    current = 0
+    longest = 0
+    for value in sequence:
+        if value < 0.0:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
 
 
 def _meets_basic_edge(live: Mapping[str, Any], config: LearningScalerConfig) -> bool:
@@ -176,6 +292,7 @@ def _quick_learner_score(
     live: Mapping[str, Any],
     recent_delta: float,
     hard_blockers: list[str],
+    statistical_edge: Mapping[str, Any],
 ) -> float:
     sample = _ratio(float(live.get("trade_count") or 0.0), float(config.min_real_trades_for_score)) * 20.0
     win = _ratio(float(live.get("win_rate") or 0.0), max(config.target_win_rate, 0.01)) * 18.0
@@ -183,8 +300,9 @@ def _quick_learner_score(
     profit = _ratio(float(live.get("profit_factor") or 0.0), config.target_profit_factor) * 16.0
     dd = (1.0 - _ratio(abs(float(live.get("max_drawdown_r") or 0.0)), config.max_drawdown_r)) * 12.0
     trend = _ratio(max(0.0, recent_delta), max(config.positive_recent_delta_r, 0.001)) * 10.0
+    proof = 8.0 if bool(statistical_edge.get("passed")) else 0.0
     penalty = min(25.0, 8.0 * len(hard_blockers))
-    return _bounded(sample + win + expectancy + profit + dd + trend - penalty, 0.0, 100.0)
+    return _bounded(sample + win + expectancy + profit + dd + trend + proof - penalty, 0.0, 100.0)
 
 
 def _quick_scaler_score(
@@ -194,6 +312,7 @@ def _quick_scaler_score(
     aggression: Mapping[str, Any],
     hard_blockers: list[str],
     equity: float,
+    statistical_edge: Mapping[str, Any],
 ) -> float:
     tier = str(aggression.get("tier") or "UNKNOWN").upper()
     tier_points = {
@@ -210,8 +329,9 @@ def _quick_scaler_score(
     edge = _ratio(max(0.0, float(live.get("expectancy_r") or 0.0)), max(config.full_scale_expectancy_r, 0.01)) * 14.0
     capacity = _ratio(float(aggression.get("remaining") or 0.0), max(float(aggression.get("cap") or 0.0), 1.0)) * 8.0
     account_ready = 5.0 if equity > 0 else 0.0
+    proof_penalty = 18.0 if not bool(statistical_edge.get("passed")) else 0.0
     penalty = min(35.0, 10.0 * len(hard_blockers))
-    return _bounded(tier_points + sample + edge + capacity + account_ready - penalty, 0.0, 100.0)
+    return _bounded(tier_points + sample + edge + capacity + account_ready - proof_penalty - penalty, 0.0, 100.0)
 
 
 def _why_not_world_class(
@@ -222,6 +342,7 @@ def _why_not_world_class(
     hard_blockers: list[str],
     recent_delta: float,
     equity: float,
+    statistical_edge: Mapping[str, Any],
 ) -> list[str]:
     reasons: list[str] = []
     if equity <= 0.0:
@@ -248,6 +369,8 @@ def _why_not_world_class(
         reasons.append("drawdown_too_deep_for_scaling")
     if recent_delta < config.positive_recent_delta_r:
         reasons.append("recent_expectancy_not_improving_fast_enough")
+    for reason in _sequence(statistical_edge.get("reasons")):
+        reasons.append(str(reason))
     return _dedupe(reasons)
 
 

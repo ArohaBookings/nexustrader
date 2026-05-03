@@ -555,7 +555,9 @@ def format_scaler(dashboard_data: Mapping[str, Any]) -> str:
         return "<b>Learning / Scaling Scorecard</b>\nNo scorecard telemetry is available yet."
     live = _record(scaler.get("live_evidence"))
     bucket = _record(scaler.get("bucket"))
+    edge_proof = _record(scaler.get("statistical_edge"))
     why_not = [str(item) for item in _sequence(scaler.get("why_not_world_class"))]
+    proof_reasons = [str(item) for item in _sequence(edge_proof.get("reasons"))]
     return _html_lines(
         "<b>Learning / Scaling Scorecard</b>",
         [
@@ -563,6 +565,8 @@ def format_scaler(dashboard_data: Mapping[str, Any]) -> str:
             f"Learner score: <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}%</code> | Scaler score: <code>{_number(scaler.get('quick_scaler_score'), 0.0):.1f}%</code>",
             f"Live trades: <code>{int(_number(live.get('trade_count'), 0.0))}</code> | WR: <code>{_pct(_number(live.get('win_rate'), 0.0))}</code> | Exp: <code>{_number(live.get('expectancy_r'), 0.0):.3f}R</code>",
             f"PF: <code>{_number(live.get('profit_factor'), 0.0):.2f}</code> | Max DD: <code>{_number(live.get('max_drawdown_r'), 0.0):.2f}R</code> | Recent delta: <code>{_number(scaler.get('recent_delta_expectancy_r'), 0.0):.3f}R</code>",
+            f"Stat proof: <code>{bool(edge_proof.get('passed'))}</code> | sample <code>{int(_number(edge_proof.get('sample_count'), 0.0))}</code> | WR lower <code>{_pct(_number(edge_proof.get('win_rate_lower_bound'), 0.0))}</code> | Exp lower <code>{_number(edge_proof.get('expectancy_lower_bound_r'), 0.0):.3f}R</code>",
+            "Proof blockers: <code>" + _esc(", ".join(proof_reasons[:5]) or "none") + "</code>",
             f"Tier: <code>{_esc(scaler.get('tier', 'UNKNOWN'))}</code> | Bucket left: <code>{int(_number(bucket.get('remaining'), 0.0))}/{int(_number(bucket.get('cap'), 0.0))}</code>",
             "Why not world-class yet: <code>" + _esc(", ".join(why_not[:6]) or "none") + "</code>",
             f"Next safe action: <code>{_esc(scaler.get('next_safe_action', 'collect_live_evidence'))}</code>",
@@ -576,6 +580,7 @@ def format_aggression(dashboard_data: Mapping[str, Any]) -> str:
     controller = _record(dashboard_data.get("aggression_controller") or summary.get("aggression_controller"))
     live = _record(dashboard_data.get("live_evidence") or controller.get("live_evidence"))
     scaler = _record(dashboard_data.get("learning_scaler_scorecard") or summary.get("learning_scaler_scorecard"))
+    edge_proof = _record(scaler.get("statistical_edge"))
     promotion = _record(controller.get("promotion"))
     blockers = [str(item) for item in _sequence(controller.get("blockers"))]
     why_not_full = [
@@ -598,6 +603,7 @@ def format_aggression(dashboard_data: Mapping[str, Any]) -> str:
             f"Profit factor: <code>{_number(live.get('profit_factor'), 0.0):.2f}</code> | Max DD: <code>{_number(live.get('max_drawdown_r'), 0.0):.2f}R</code>",
             f"Promotion: proven=<code>{bool(promotion.get('proven_ready'))}</code> full=<code>{bool(promotion.get('full_ready'))}</code>",
             f"Learner/scaler: <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}%</code> / <code>{_number(scaler.get('quick_scaler_score'), 0.0):.1f}%</code> | <code>{_esc(scaler.get('status', 'unknown'))}</code>",
+            f"Stat proof: <code>{bool(edge_proof.get('passed'))}</code> | lower Exp <code>{_number(edge_proof.get('expectancy_lower_bound_r'), 0.0):.3f}R</code>",
             "Blockers: <code>" + _esc(", ".join(blockers[:5]) or "none") + "</code>",
             "Why not full: <code>" + _esc(", ".join(why_not_full[:5]) or "none") + "</code>",
             "Shadow trades do not unlock promotion. Hard rails still block every tier.",
@@ -629,12 +635,14 @@ def format_apex(dashboard_data: Mapping[str, Any]) -> str:
     promotion = _record(dashboard_data.get("promotion_audit") or edge.get("promotion_audit"))
     pipeline = _record(dashboard_data.get("xau_btc_opportunity_pipeline") or edge.get("xau_btc_opportunity_pipeline"))
     scaler = _record(dashboard_data.get("learning_scaler_scorecard") or _record(dashboard_data.get("summary")).get("learning_scaler_scorecard"))
+    edge_proof = _record(scaler.get("statistical_edge"))
     return _html_lines(
         "<b>Institutional Apex</b>",
         [
             f"Readiness: <code>{_esc(apex.get('readiness', 'unknown'))}</code> | Grade: <code>{_number(apex.get('grade_pct'), 0.0):.1f}%</code>",
             _esc(apex.get("summary", "")),
             f"Learning/scaling: <code>{_number(scaler.get('quick_learner_score'), 0.0):.1f}%</code> / <code>{_number(scaler.get('quick_scaler_score'), 0.0):.1f}%</code> | <code>{_esc(scaler.get('status', 'unknown'))}</code>",
+            f"Stat proof: <code>{bool(edge_proof.get('passed'))}</code> | lower WR/Exp <code>{_pct(_number(edge_proof.get('win_rate_lower_bound'), 0.0))}/{_number(edge_proof.get('expectancy_lower_bound_r'), 0.0):.3f}R</code>",
             f"Market mastery: <code>{_pct(_number(_record(apex.get('market_mastery')).get('score'), 0.0))}</code>",
             f"Data fusion: <code>{_pct(_number(_record(apex.get('data_fusion')).get('consensus_score'), 0.0))}</code>",
             f"Anti-overfit: <code>{_esc(promotion.get('reason') or _record(apex.get('anti_overfit')).get('reason', 'unknown'))}</code>",
