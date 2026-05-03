@@ -487,7 +487,7 @@ def format_blockers(dashboard_data: Mapping[str, Any]) -> str:
     soft = [_record(item) for item in _sequence(repair.get("soft_blockers"))]
     hard = [_record(item) for item in _sequence(repair.get("hard_rails"))]
     priority_lines = [
-        f"{item.get('symbol')}: {item.get('live_gate')} | {item.get('recommended_action')} | blocker={item.get('blocker') or 'none'}"
+        f"{item.get('symbol')}: {item.get('live_gate')} | {item.get('recommended_action')} | reasons={','.join(str(reason) for reason in _sequence(item.get('live_gate_reasons'))[:3]) or 'none'} | blocker={item.get('blocker') or 'none'}"
         for item in priority[:4]
     ]
     return _html_lines(
@@ -512,7 +512,8 @@ def format_frequency_policy(dashboard_data: Mapping[str, Any]) -> str:
             f"{item.get('symbol')}: shadow target {int(_number(target.get('low'), 0.0))}-{int(_number(target.get('high'), 0.0))}/10m, "
             f"candidates {int(_number(item.get('actual_candidates_last_10m'), 0.0))}, "
             f"live {int(_number(item.get('actual_live_trades_last_10m'), 0.0))}, "
-            f"gate {item.get('live_gate')}"
+            f"gate {item.get('live_gate')}, "
+            f"reasons {','.join(str(reason) for reason in _sequence(item.get('live_gate_reasons'))[:3]) or 'none'}"
         )
     return _html_lines(
         "<b>Frequency Policy</b>",

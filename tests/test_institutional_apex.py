@@ -213,3 +213,99 @@ def test_telegram_reports_edge_surfaces_without_runtime_bypass() -> None:
     assert "Frequency Policy" in frequency.text
     assert "cannot force entries" in frequency.text
     assert not frequency.action
+
+
+def _minimal_edge_ready_apex() -> dict:
+    return {
+        "data_fusion": {
+            "consensus_score": 0.74,
+            "providers": [{"id": "mt5", "status": "active"}],
+        },
+        "anti_overfit": {
+            "recent_sample": 220,
+            "validation_sample": 120,
+            "recent_delta": 0.041,
+            "validation_delta": 0.034,
+            "recent_expectancy": 0.16,
+            "validation_expectancy": 0.11,
+            "drawdown_degradation": 0.0,
+        },
+        "self_repair": {"soft_blockers": [], "hard_rails": [], "status": "clear"},
+    }
+
+
+def test_live_expansion_requires_every_evidence_gate_not_just_bridge_approval() -> None:
+    apex = _minimal_edge_ready_apex()
+    apex["anti_overfit"] = {
+        **apex["anti_overfit"],
+        "validation_delta": 0.01,
+    }
+    edge = build_edge_gated_apex_policy(
+        health={"learning_brain": {"trained_samples": 500, "last_market_history_seed_status": "ok"}},
+        stats={},
+        symbols=[{"symbol": "XAUUSD", "approved": True, "quality_score": 0.88}],
+        institutional_apex=apex,
+        orchestrator_config={
+            "edge_promotion": {
+                "recent_window": 200,
+                "validation_window": 100,
+                "min_expectancy_gain": 0.03,
+                "max_drawdown_degradation": 0.0,
+            },
+            "frequency_policy": {"priority_symbols": ["XAUUSD"]},
+        },
+    )
+    xau = edge["xau_btc_opportunity_pipeline"]["priority_symbols"][0]
+
+    assert xau["approved_by_existing_bridge"] is True
+    assert xau["live_gate"] == "blocked_by_edge_or_risk_gate"
+    assert xau["live_expansion_allowed"] is False
+    assert any(str(reason).startswith("training_or_promotion_gate") for reason in xau["live_gate_reasons"])
+    assert xau["evidence_contract"]["live_entries_allowed"] is False
+
+
+def test_live_shadow_gap_throttles_btc_xau_live_expansion() -> None:
+    edge = build_edge_gated_apex_policy(
+        health={"learning_brain": {"trained_samples": 500, "last_market_history_seed_status": "ok"}},
+        stats={},
+        symbols=[{"symbol": "BTCUSD", "approved": True, "quality_score": 0.9, "live_shadow_gap_risk_score": 0.42}],
+        institutional_apex=_minimal_edge_ready_apex(),
+        orchestrator_config={
+            "edge_promotion": {
+                "recent_window": 200,
+                "validation_window": 100,
+                "min_expectancy_gain": 0.03,
+                "max_drawdown_degradation": 0.0,
+            },
+            "frequency_policy": {"priority_symbols": ["BTCUSD"], "live_shadow_gap_throttle": 0.30},
+        },
+    )
+    btc = edge["xau_btc_opportunity_pipeline"]["priority_symbols"][0]
+
+    assert btc["live_gate"] == "blocked_by_edge_or_risk_gate"
+    assert "live_shadow_gap_throttle" in btc["live_gate_reasons"]
+    assert btc["recommended_action"] == "shadow_reconcile_live_gap"
+    assert edge["live_shadow_gap"]["status"] == "gap_throttle_required"
+    assert edge["xau_btc_opportunity_pipeline"]["live_frequency_forced"] is False
+
+
+def test_stale_mt5_soft_blocker_is_treated_as_locked_hard_rail() -> None:
+    apex = _minimal_edge_ready_apex()
+    apex["self_repair"] = {
+        "soft_blockers": [{"symbol": "SYSTEM", "reason": "stale_mt5_feed"}],
+        "hard_rails": [],
+        "status": "repair_pending",
+    }
+    edge = build_edge_gated_apex_policy(
+        health={"learning_brain": {"trained_samples": 500, "last_market_history_seed_status": "ok"}},
+        stats={},
+        symbols=[{"symbol": "XAUUSD", "approved": True, "quality_score": 0.9}],
+        institutional_apex=apex,
+        orchestrator_config={"frequency_policy": {"priority_symbols": ["XAUUSD"]}},
+    )
+
+    assert edge["self_repair"]["status"] == "hard_rail_locked"
+    assert edge["self_repair"]["hard_rails_locked"] is True
+    assert edge["self_repair"]["recommended_bridge_action"] == "none"
+    assert edge["training_bootstrap_status"]["live_risk_expansion_allowed"] is False
+    assert "hard_rail_present" in edge["xau_btc_opportunity_pipeline"]["priority_symbols"][0]["live_gate_reasons"]

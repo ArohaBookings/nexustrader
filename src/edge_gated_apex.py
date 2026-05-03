@@ -123,6 +123,13 @@ def _edge_config(orchestrator: Mapping[str, Any], risk_config: Mapping[str, Any]
                 "XAUUSD": {"low": 6, "high": 8},
                 "BTCUSD": {"low": 4, "high": 6},
             },
+            "live_quality_floor": _record(frequency.get("live_quality_floor"))
+            or {
+                "XAUUSD": 0.62,
+                "BTCUSD": 0.60,
+            },
+            "live_shadow_gap_throttle": _clamp(_num(frequency.get("live_shadow_gap_throttle"), 0.30), 0.0, 1.0),
+            "native_data_required_for_live": bool(frequency.get("native_data_required_for_live", True)),
             "prime_sessions": _seq(frequency.get("prime_sessions")) or ["LONDON", "OVERLAP", "NEW_YORK"],
             "prime_session_multiplier": _num(frequency.get("prime_session_multiplier"), 1.25),
         },
@@ -214,7 +221,9 @@ def _promotion_audit(apex: Mapping[str, Any], config: Mapping[str, Any]) -> dict
 def _self_repair_overlay(apex: Mapping[str, Any]) -> dict[str, Any]:
     raw = _record(apex.get("self_repair"))
     soft = [_record(item) for item in _seq(raw.get("soft_blockers"))]
-    hard = [_record(item) for item in _seq(raw.get("hard_rails"))]
+    configured_hard = [_record(item) for item in _seq(raw.get("hard_rails"))]
+    hard_like_soft = [item for item in soft if _hard_rail(_txt(item.get("reason")))]
+    hard = [*configured_hard, *hard_like_soft]
     soft_repairable = [item for item in soft if _soft_repairable(_txt(item.get("reason")))]
     actions = [_record(item) for item in _seq(raw.get("actions"))]
     if soft_repairable and not hard and not actions:
@@ -226,6 +235,7 @@ def _self_repair_overlay(apex: Mapping[str, Any]) -> dict[str, Any]:
         "sla_minutes": int(_num(raw.get("sla_minutes"), 5.0)),
         "soft_blockers": soft,
         "hard_rails": hard,
+        "hard_like_soft_blockers": hard_like_soft,
         "soft_repairable_count": len(soft_repairable),
         "hard_rails_locked": True,
         "recommended_bridge_action": "none" if hard else ("refresh_state" if soft_repairable else _txt(raw.get("recommended_bridge_action"), "none")),
@@ -315,6 +325,9 @@ def _opportunity_pipeline(
 ) -> dict[str, Any]:
     frequency = _record(config.get("frequency"))
     targets = _record(frequency.get("shadow_targets_10m"))
+    quality_floors = _record(frequency.get("live_quality_floor"))
+    gap_throttle = _clamp(_num(frequency.get("live_shadow_gap_throttle"), 0.30), 0.0, 1.0)
+    native_required = bool(frequency.get("native_data_required_for_live", True))
     priority = [str(item).upper() for item in (_seq(frequency.get("priority_symbols")) or PRIORITY_SYMBOLS)]
     hard_rails = bool(_seq(repair.get("hard_rails")))
     rows: list[dict[str, Any]] = []
@@ -330,12 +343,38 @@ def _opportunity_pipeline(
         quality = _clamp(_num(card.get("quality_score"), 0.0), 0.0, 1.0)
         approved = bool(card.get("approved")) and not blocker
         data_ok = _num(data_quality.get("score"), 0.0) >= 0.45
+        live_data_ok = _txt(data_quality.get("status")) == "tradable_native_backed"
         has_native_or_proxy_feed = bool(_seq(data_quality.get("native_active_sources")) or _seq(data_quality.get("proxy_active_sources")))
+        gap_score = _clamp(_num(card.get("live_shadow_gap_risk_score"), _num(card.get("learning_live_shadow_gap_score"), 0.0)), 0.0, 1.0)
+        quality_floor = _clamp(_num(quality_floors.get(symbol), 0.60), 0.0, 1.0)
         shadow_allowed = bool((data_ok or has_native_or_proxy_feed) and not hard_rails)
         live_expansion_allowed = bool(training.get("live_risk_expansion_allowed"))
-        live_gate = "eligible_if_bridge_approves" if approved and not hard_rails else "blocked_by_edge_or_risk_gate"
+        gate_reasons: list[str] = []
+        if not approved:
+            gate_reasons.append("bridge_candidate_not_approved")
         if blocker:
+            gate_reasons.append(f"symbol_blocker:{blocker}")
+        if hard_rails:
+            gate_reasons.append("hard_rail_present")
+        if not live_expansion_allowed:
+            gate_reasons.append(f"training_or_promotion_gate:{_txt(training.get('status'), 'unknown')}")
+        if native_required and not live_data_ok:
+            gate_reasons.append("native_data_quality_not_live_ready")
+        if gap_score >= gap_throttle:
+            gate_reasons.append("live_shadow_gap_throttle")
+        if quality < quality_floor:
+            gate_reasons.append("quality_below_symbol_floor")
+        live_gate = "eligible_if_bridge_approves" if not gate_reasons else "blocked_by_edge_or_risk_gate"
+        if hard_rails:
+            action = "hold_live_risk_hard_rail"
+        elif gap_score >= gap_throttle:
+            action = "shadow_reconcile_live_gap"
+        elif blocker:
             action = "repair_or_shadow_validate_blocker"
+        elif native_required and not live_data_ok:
+            action = "collect_native_feed_or_keep_research_only"
+        elif quality < quality_floor:
+            action = "wait_for_higher_quality_confluence"
         elif not live_expansion_allowed:
             action = "increase_shadow_sampling_not_live_risk"
         else:
@@ -351,13 +390,28 @@ def _opportunity_pipeline(
                 "live_trade_debt_10m": max(0, low_target - actual_live),
                 "catchup_pressure": _clamp(_num(trajectory.get("catchup_pressure"), 0.0), 0.0, 1.0),
                 "quality_score": quality,
+                "quality_floor": quality_floor,
                 "approved_by_existing_bridge": approved,
                 "shadow_burst_allowed": shadow_allowed,
-                "live_expansion_allowed": live_expansion_allowed,
+                "live_expansion_allowed": bool(live_expansion_allowed and not gate_reasons),
                 "live_gate": live_gate,
+                "live_gate_reasons": gate_reasons,
+                "native_data_required": native_required,
+                "native_data_live_ready": live_data_ok,
+                "live_shadow_gap_score": gap_score,
+                "live_shadow_gap_threshold": gap_throttle,
                 "blocker": blocker,
                 "recommended_action": action,
                 "forced_live_frequency": False,
+                "evidence_contract": {
+                    "bridge_approved": approved,
+                    "training_and_promotion_cleared": live_expansion_allowed,
+                    "native_data_live_ready": live_data_ok,
+                    "live_shadow_gap_below_threshold": gap_score < gap_throttle,
+                    "quality_floor_met": quality >= quality_floor,
+                    "hard_rails_clear": not hard_rails,
+                    "live_entries_allowed": not gate_reasons,
+                },
             }
         )
     return {
@@ -402,6 +456,7 @@ def _live_shadow_gap(symbols: Sequence[Mapping[str, Any]], opportunity_pipeline:
         "max_gap_score": worst,
         "priority_symbols": rows,
         "live_expansion_throttle": _clamp(1.0 - worst * 0.65, 0.35, 1.0),
+        "throttle_reason": "live_shadow_gap_above_threshold" if worst >= 0.30 else "none",
     }
 
 
@@ -417,6 +472,7 @@ def _brain_summary(
     brain = _record(health.get("learning_brain"))
     priority = [_record(item) for item in _seq(opportunity_pipeline.get("priority_symbols"))]
     blocked = [item for item in priority if _txt(item.get("blocker"))]
+    gated = [item for item in priority if _seq(item.get("live_gate_reasons"))]
     return {
         "readiness": _txt(apex.get("readiness"), "unknown"),
         "apex_summary": _txt(apex.get("summary"), ""),
@@ -426,6 +482,10 @@ def _brain_summary(
         "promotion_reason": _txt(promotion.get("reason"), "unknown"),
         "repair_status": _txt(repair.get("status"), "unknown"),
         "priority_blocked_symbols": [_txt(item.get("symbol")) for item in blocked],
+        "priority_gate_reasons": {
+            _txt(item.get("symbol")): [str(reason) for reason in _seq(item.get("live_gate_reasons"))[:5]]
+            for item in gated[:4]
+        },
         "operator_message": (
             "BTCUSD/XAUUSD are prioritized for shadow opportunity capture; live expansion stays gated by validated edge and hard rails."
         ),

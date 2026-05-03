@@ -507,6 +507,11 @@ frequency_policy:
   shadow_targets_10m:
     XAUUSD: {low: 6, high: 8}
     BTCUSD: {low: 4, high: 6}
+  live_quality_floor:
+    XAUUSD: 0.62
+    BTCUSD: 0.60
+  live_shadow_gap_throttle: 0.30
+  native_data_required_for_live: true
   prime_sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
   prime_session_multiplier: 1.25
 

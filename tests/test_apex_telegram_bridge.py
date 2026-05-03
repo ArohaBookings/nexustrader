@@ -95,10 +95,14 @@ def test_telegram_webhook_fails_closed_without_owner_chat_id() -> None:
     with TemporaryDirectory() as tmp_dir:
         fake = _FakeTelegramClient()
         env = {
-            **os.environ,
-            "TELEGRAM_WEBHOOK_SECRET": "secret",
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"TELEGRAM_CHAT_ID", "APEX_TELEGRAM_OWNER_CHAT_ID"}
         }
-        with patch.dict(os.environ, env, clear=True), patch("src.bridge_server.telegram_client_from_env", return_value=fake):
+        env["TELEGRAM_WEBHOOK_SECRET"] = "secret"
+        with patch.dict(os.environ, env, clear=True), patch(
+            "src.bridge_server.telegram_client_from_env", return_value=fake
+        ), patch("src.bridge_server.owner_chat_id_from_env", return_value=""):
             client = TestClient(_make_app(Path(tmp_dir)))
             response = client.post(
                 "/telegram/webhook",
