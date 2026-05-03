@@ -111,7 +111,7 @@ def test_live_readiness_blocks_missing_runtime_and_credentials() -> None:
     assert "telegram_bot_identity" in blocker_names
     assert "github_auth" in blocker_names
     assert "vercel_auth_project" in blocker_names
-    assert report["next_actions"]
+    assert any("send /start" in action for action in report["next_actions"])
 
 
 def test_live_readiness_blocks_dirty_git_worktree_for_deploy() -> None:

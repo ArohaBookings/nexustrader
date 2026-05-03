@@ -389,7 +389,23 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
             "On the MT5 host, compile and reattach mt5_bridge/ApexBridgeEA.mq5, enable WebRequest for http://127.0.0.1:8000, and enable AutoTrading/Allow Algo Trading so terminal_connected and trade_allowed flags turn true."
         )
     if "required_env" in names:
-        actions.append("Populate config/secrets.env with Telegram, webhook, and OpenAI secrets; never commit the file.")
+        missing_env: set[str] = set()
+        for check in hard_failures:
+            if check.name == "required_env":
+                missing_env.update(str(item) for item in check.details.get("missing", []) if str(item).strip())
+        if "TELEGRAM_CHAT_ID" in missing_env:
+            actions.append(
+                "Open https://t.me/Nexus_vantage_trader_bot and send /start; the running local Telegram poller will claim TELEGRAM_CHAT_ID automatically."
+            )
+        remaining = sorted(item for item in missing_env if item != "TELEGRAM_CHAT_ID")
+        if remaining:
+            actions.append(
+                "Populate config/secrets.env with missing runtime secrets: "
+                + ", ".join(remaining)
+                + ". Never commit the file."
+            )
+        if not missing_env:
+            actions.append("Populate config/secrets.env with Telegram, webhook, and OpenAI secrets; never commit the file.")
     if "telegram_bot_identity" in names:
         actions.append("Run scripts/apex_telegram_check.py --get-me, then send /start to the bot and run --discover-chat/--send-test.")
     if "git_repository" in names or "github_auth" in names or "cli_gh" in names:
