@@ -386,7 +386,7 @@ Live:
 ./scripts/start_live.sh
 ```
 
-The Python process is the bot. You do not run a Next.js dev server to place trades.
+`start_live.sh` loads local env values from `config/secrets.env`, requires `LIVE_TRADING=true`, requires Telegram/OpenAI operator telemetry keys, and then runs the fail-closed production bridge launcher. The Python process is the bot. You do not run a Next.js dev server to place trades.
 
 ## Tests
 

@@ -40,6 +40,7 @@ TELEGRAM_CHAT_ID=...
 TELEGRAM_WEBHOOK_SECRET=...
 OPENAI_API_KEY=...
 NEWS_API_KEY=...
+LIVE_TRADING=false
 ```
 
 Send `/start` to `@Nexus_vantage_trader_bot`, then verify:
@@ -89,6 +90,14 @@ Useful variants:
 PYTHONPATH=. python3 scripts/live_signoff.py --send-telegram-test
 PYTHONPATH=. python3 scripts/live_signoff.py --no-deploy
 ```
+
+Live startup uses the same fail-closed path:
+
+```bash
+./scripts/start_live.sh
+```
+
+`start_live.sh` loads `config/secrets.env` and `secrets.env` without printing values, requires `LIVE_TRADING=true`, requires Telegram/OpenAI live env keys for operator visibility, sets `APEX_MODE=LIVE`, and runs `scripts/start_bridge_prod.py`. That launcher verifies MT5 before starting the live bridge.
 
 Researched platform constraints:
 
