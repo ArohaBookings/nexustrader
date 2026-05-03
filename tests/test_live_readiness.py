@@ -34,7 +34,7 @@ def test_live_readiness_ready_when_all_hard_gates_pass() -> None:
         settings_raw=_settings(),
         env=env,
         command_exists=lambda command: True,
-        git_probe={"is_repo": True, "remote": "git@github.com:ArohaBookings/nexustrader.git", "branch": "main"},
+        git_probe={"is_repo": True, "remote": "git@github.com:ArohaBookings/nexustrader.git", "branch": "main", "upstream": "origin/main"},
         gh_auth_probe={"ok": True},
         vercel_probe={"ok": True, "project_linked": True, "token_present": True},
         mt5_verification={"ok": True, "account": {"login": 1}, "version": "5"},
@@ -93,6 +93,7 @@ def test_live_readiness_blocks_dirty_git_worktree_for_deploy() -> None:
             "is_repo": True,
             "remote": "https://github.com/ArohaBookings/nexustrader.git",
             "branch": "main",
+            "upstream": "origin/main",
             "has_head": True,
             "dirty_count": 2,
             "dirty_preview": [" M src/live_readiness.py", "?? scratch.txt"],
@@ -110,4 +111,41 @@ def test_live_readiness_blocks_dirty_git_worktree_for_deploy() -> None:
 
     blocker_names = {item["name"] for item in report["hard_blockers"]}
     assert "git_worktree_clean" in blocker_names
+    assert report["ready"] is False
+
+
+def test_live_readiness_blocks_unpublished_git_branch_for_deploy() -> None:
+    env = {
+        "TELEGRAM_BOT_TOKEN": "set",
+        "TELEGRAM_CHAT_ID": "123",
+        "TELEGRAM_WEBHOOK_SECRET": "secret",
+        "OPENAI_API_KEY": "set",
+        "FINNHUB_API_KEY": "set",
+    }
+    report = build_live_readiness_report(
+        project_root=Path("/tmp/apex"),
+        settings_raw=_settings(),
+        env=env,
+        command_exists=lambda command: True,
+        git_probe={
+            "is_repo": True,
+            "remote": "https://github.com/ArohaBookings/nexustrader.git",
+            "branch": "main",
+            "upstream": "",
+            "has_head": True,
+            "dirty_count": 0,
+        },
+        gh_auth_probe={"ok": True},
+        vercel_probe={"ok": True, "project_linked": True, "token_present": True},
+        mt5_verification={"ok": True, "account": {"login": 1}, "version": "5"},
+        bridge_health={
+            "ok": True,
+            "bridge_status": "UP",
+            "broker_connectivity": {"terminal_connected": True, "terminal_trade_allowed": True},
+        },
+        telegram_identity={"ok": True, "username": "Nexus_vantage_trader_bot", "is_bot": True},
+    )
+
+    blocker_names = {item["name"] for item in report["hard_blockers"]}
+    assert "git_branch_published" in blocker_names
     assert report["ready"] is False

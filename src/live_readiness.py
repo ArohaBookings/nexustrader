@@ -92,11 +92,13 @@ def collect_git_probe(root: Path, command_runner: CommandRunner = _default_comma
     branch_code, branch_output = command_runner(("git", "branch", "--show-current"), root)
     head_code, head_output = command_runner(("git", "rev-parse", "--verify", "HEAD"), root)
     status_code, status_output = command_runner(("git", "status", "--porcelain"), root)
+    upstream_code, upstream_output = command_runner(("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"), root)
     dirty_lines = [line for line in status_output.splitlines() if line.strip()] if status_code == 0 else []
     return {
         "is_repo": True,
         "remote": remote_output if remote_code == 0 else "",
         "branch": branch_output if branch_code == 0 else "",
+        "upstream": upstream_output if upstream_code == 0 else "",
         "has_head": head_code == 0,
         "head": head_output if head_code == 0 else "",
         "dirty_count": len(dirty_lines),
@@ -185,6 +187,16 @@ def build_live_readiness_report(
                     "dirty_count": dirty_count,
                     "dirty_preview": list(git_payload.get("dirty_preview") or [])[:12],
                 },
+            )
+        )
+        upstream = str(git_payload.get("upstream") or "").strip()
+        checks.append(
+            _check(
+                "git_branch_published",
+                bool(upstream),
+                "Git branch has an upstream remote branch" if upstream else "Git branch is not published to an upstream remote branch",
+                hard=require_deploy,
+                details={"branch": str(git_payload.get("branch") or ""), "upstream": upstream},
             )
         )
 
@@ -353,6 +365,8 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
         actions.append("Use a real git checkout of https://github.com/ArohaBookings/nexustrader.git and authenticate gh before pushing.")
     if "git_worktree_clean" in names:
         actions.append("Commit or intentionally discard local source changes before deployment sign-off.")
+    if "git_branch_published" in names:
+        actions.append("Push the active branch to GitHub and set upstream before Vercel/GitHub deployment sign-off.")
     if "vercel_auth_project" in names or "cli_vercel" in names:
         actions.append("Install/authenticate Vercel CLI and link the dashboard/webhook project before production deploy.")
     if any(check.name == "vercel_runtime_architecture" for check in warnings):
