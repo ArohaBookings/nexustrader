@@ -201,13 +201,14 @@ def build_live_readiness_report(
         )
 
     gh_payload = dict(gh_auth_probe or {})
+    github_publish_ready = bool(gh_payload.get("ok")) or bool(git_payload.get("upstream"))
     checks.append(
         _check(
             "github_auth",
-            bool(gh_payload.get("ok")),
-            "GitHub CLI is authenticated" if bool(gh_payload.get("ok")) else "GitHub CLI is not authenticated",
+            github_publish_ready,
+            "GitHub publish path is available" if github_publish_ready else "GitHub CLI is not authenticated and branch is not published",
             hard=require_deploy,
-            details={k: v for k, v in gh_payload.items() if k != "token"},
+            details={**{k: v for k, v in gh_payload.items() if k != "token"}, "upstream": str(git_payload.get("upstream") or "")},
         )
     )
 
