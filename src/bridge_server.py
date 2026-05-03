@@ -545,6 +545,113 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(default)
 
 
+def _bridge_account_scaling_summary(
+    *,
+    active_runtime: Mapping[str, Any],
+    active_snapshot: Mapping[str, Any] | None,
+    rollout_stats: Mapping[str, Any],
+) -> dict[str, Any]:
+    snapshot = dict(active_snapshot or {})
+    runtime = dict(active_runtime or {})
+    balance = _safe_float(runtime.get("live_balance", snapshot.get("balance")), 0.0)
+    equity = _safe_float(runtime.get("live_equity", snapshot.get("equity")), balance)
+    free_margin = _safe_float(runtime.get("live_free_margin", snapshot.get("free_margin")), equity)
+    overall = dict(rollout_stats.get("overall") or {}) if isinstance(rollout_stats, Mapping) else {}
+    trades = _safe_int(rollout_stats.get("trade_count", overall.get("trades")), 0) if isinstance(rollout_stats, Mapping) else 0
+    win_rate = _safe_float(overall.get("win_rate"), 0.0)
+    expectancy = _safe_float(overall.get("expectancy_r"), 0.0)
+
+    phase = "PHASE_1"
+    reason = "equity_below_growth_threshold"
+    risk_pct = 0.01
+    max_risk_pct = 0.01
+    daily_trade_cap = 240
+    overflow_daily_trade_cap = 720
+    ai_mode = "moderate"
+    next_requirements: dict[str, Any] = {
+        "phase": "PHASE_2",
+        "min_equity": 100.0,
+        "min_trades": 12,
+        "min_win_rate": 0.50,
+        "min_expectancy_r": 0.05,
+    }
+    if equity >= 1_500.0 and trades >= 60 and win_rate >= 0.56 and expectancy >= 0.10:
+        phase = "PHASE_4"
+        reason = "small_account_scaling_confirmed"
+        risk_pct = 0.02
+        max_risk_pct = 0.025
+        daily_trade_cap = 360
+        overflow_daily_trade_cap = 960
+        ai_mode = "aggressive"
+        next_requirements = {"phase": "PHASE_5", "min_equity": 5_000.0, "min_trades": 120, "min_win_rate": 0.57, "min_expectancy_r": 0.12}
+    elif equity >= 300.0 and trades >= 30 and win_rate >= 0.55 and expectancy >= 0.10:
+        phase = "PHASE_3"
+        reason = "equity_and_performance_confirmed"
+        risk_pct = 0.02 if equity >= 500.0 else 0.015
+        max_risk_pct = 0.025
+        daily_trade_cap = 320
+        overflow_daily_trade_cap = 900
+        ai_mode = "aggressive"
+        next_requirements = {"phase": "PHASE_4", "min_equity": 1_500.0, "min_trades": 60, "min_win_rate": 0.56, "min_expectancy_r": 0.10}
+    elif equity >= 100.0 and trades >= 12 and win_rate >= 0.50 and expectancy >= 0.05:
+        phase = "PHASE_2"
+        reason = "edge_emerging"
+        risk_pct = 0.01
+        max_risk_pct = 0.025
+        daily_trade_cap = 280
+        overflow_daily_trade_cap = 760
+        ai_mode = "moderate"
+        next_requirements = {"phase": "PHASE_3", "min_equity": 300.0, "min_trades": 30, "min_win_rate": 0.55, "min_expectancy_r": 0.10}
+    elif equity >= 100.0:
+        reason = "equity_up_but_performance_unproven"
+
+    fallback = {
+        "balance": balance,
+        "equity": equity,
+        "free_margin": free_margin,
+        "account_increase_detected": runtime.get("account_increase_detected"),
+        "account_decrease_detected": runtime.get("account_decrease_detected"),
+        "material_account_change_detected": runtime.get("material_account_change_detected"),
+        "sizing_updated": runtime.get("sizing_updated") if runtime.get("sizing_updated") is not None else bool(equity > 0.0),
+        "sizing_updated_at": runtime.get("sizing_updated_at") or snapshot.get("updated_at") or _iso_now(),
+        "equity_band": runtime.get("equity_band") or ("bootstrap_balanced" if equity < 160.0 else "growth_ready"),
+        "high_watermark_equity": runtime.get("high_watermark_equity") or equity,
+        "balance_change_pct": runtime.get("balance_change_pct"),
+        "equity_change_pct": runtime.get("equity_change_pct"),
+        "amount_increase": runtime.get("amount_increase"),
+        "prior_risk_budget": runtime.get("prior_risk_budget"),
+        "new_risk_budget": runtime.get("new_risk_budget") or round(equity * risk_pct, 2),
+        "sizing_updated_reason": runtime.get("sizing_updated_reason") or "bridge_account_snapshot_fallback",
+        "current_phase": phase,
+        "phase_reason": reason,
+        "equity_phase_thresholds": {
+            "PHASE_1_max": 99.99,
+            "PHASE_2_min": 100.0,
+            "PHASE_3_min": 300.0,
+            "PHASE_4_min": 1500.0,
+            "PHASE_5_min": 5000.0,
+        },
+        "performance_phase_thresholds": {
+            "PHASE_2": {"min_trades": 12, "min_win_rate": 0.50, "min_expectancy_r": 0.05},
+            "PHASE_3": {"min_trades": 30, "min_win_rate": 0.55, "min_expectancy_r": 0.10},
+            "PHASE_4": {"min_trades": 60, "min_win_rate": 0.56, "min_expectancy_r": 0.10},
+        },
+        "next_phase_requirements": next_requirements,
+        "current_daily_trade_cap": daily_trade_cap,
+        "current_overflow_daily_trade_cap": overflow_daily_trade_cap,
+        "current_risk_pct": risk_pct,
+        "current_max_risk_pct": max_risk_pct,
+        "current_ai_threshold_mode": ai_mode,
+    }
+    for key in ("current_phase", "phase_reason", "current_daily_trade_cap", "current_overflow_daily_trade_cap", "current_risk_pct", "current_max_risk_pct", "current_ai_threshold_mode"):
+        if runtime.get(key) not in (None, ""):
+            fallback[key] = runtime.get(key)
+    for key in ("equity_phase_thresholds", "performance_phase_thresholds", "next_phase_requirements"):
+        if isinstance(runtime.get(key), Mapping) and runtime.get(key):
+            fallback[key] = dict(runtime.get(key) or {})
+    return fallback
+
+
 def _blocker_entry(
     *,
     reason: str,
@@ -11190,6 +11297,11 @@ def create_bridge_app(
                 ):
                     active_runtime = dict(runtime_value)
                     break
+        account_scaling_summary = _bridge_account_scaling_summary(
+            active_runtime=active_runtime,
+            active_snapshot=active_snapshot if isinstance(active_snapshot, Mapping) else None,
+            rollout_stats=current_rollout_stats,
+        )
         optimizer_summary = strategy_optimizer.summary()
         open_positions_estimate_server = open_positions_live
         current_daily_state = str(
@@ -11273,34 +11385,7 @@ def create_bridge_app(
             "strategy_optimizer_summary": optimizer_summary,
             "recent_trade_learning": journal.recent_review_summary(limit=50, account=active_account, magic=active_magic),
             "symbol_training_mode": dict(symbol_training_state),
-            "account_scaling": {
-                "balance": active_runtime.get("live_balance", (active_snapshot or {}).get("balance") if isinstance(active_snapshot, dict) else None),
-                "equity": active_runtime.get("live_equity", (active_snapshot or {}).get("equity") if isinstance(active_snapshot, dict) else None),
-                "free_margin": active_runtime.get("live_free_margin", (active_snapshot or {}).get("free_margin") if isinstance(active_snapshot, dict) else None),
-                "account_increase_detected": active_runtime.get("account_increase_detected"),
-                "account_decrease_detected": active_runtime.get("account_decrease_detected"),
-                "material_account_change_detected": active_runtime.get("material_account_change_detected"),
-                "sizing_updated": active_runtime.get("sizing_updated"),
-                "sizing_updated_at": active_runtime.get("sizing_updated_at"),
-                "equity_band": active_runtime.get("equity_band"),
-                "high_watermark_equity": active_runtime.get("high_watermark_equity"),
-                "balance_change_pct": active_runtime.get("balance_change_pct"),
-                "equity_change_pct": active_runtime.get("equity_change_pct"),
-                "amount_increase": active_runtime.get("amount_increase"),
-                "prior_risk_budget": active_runtime.get("prior_risk_budget"),
-                "new_risk_budget": active_runtime.get("new_risk_budget"),
-                "sizing_updated_reason": active_runtime.get("sizing_updated_reason"),
-                "current_phase": active_runtime.get("current_phase"),
-                "phase_reason": active_runtime.get("phase_reason"),
-                "equity_phase_thresholds": active_runtime.get("equity_phase_thresholds", {}),
-                "performance_phase_thresholds": active_runtime.get("performance_phase_thresholds", {}),
-                "next_phase_requirements": active_runtime.get("next_phase_requirements", {}),
-                "current_daily_trade_cap": active_runtime.get("current_daily_trade_cap"),
-                "current_overflow_daily_trade_cap": active_runtime.get("current_overflow_daily_trade_cap"),
-                "current_risk_pct": active_runtime.get("current_risk_pct"),
-                "current_max_risk_pct": active_runtime.get("current_max_risk_pct"),
-                "current_ai_threshold_mode": active_runtime.get("current_ai_threshold_mode"),
-            },
+            "account_scaling": account_scaling_summary,
             "latest_account_snapshot": active_snapshot if isinstance(active_snapshot, dict) else queue.latest_account_snapshot(),
             "recent_account_snapshots": queue.recent_account_snapshots(limit=20),
             "active_account_snapshots": queue.recent_account_snapshots(limit=20, account=active_account, magic=active_magic)

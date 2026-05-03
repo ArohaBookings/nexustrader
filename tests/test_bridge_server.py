@@ -13,6 +13,7 @@ import unittest
 from src.bridge_server import (
     BridgeActionQueue,
     OrchestratorPolicy,
+    _bridge_account_scaling_summary,
     _counts_toward_stale_family_archive,
     _delivery_exec_budget_usd,
     _effective_bridge_drawdown_guard_pct,
@@ -69,6 +70,44 @@ def _action(signal_id: str, symbol: str = "XAUUSD") -> dict:
 WEEKDAY_TOKYO = datetime(2026, 3, 23, 1, 0, tzinfo=timezone.utc)
 WEEKDAY_LONDON = datetime(2026, 3, 23, 9, 30, tzinfo=timezone.utc)
 WEEKDAY_OVERLAP = datetime(2026, 3, 23, 14, 30, tzinfo=timezone.utc)
+
+
+def test_bridge_account_scaling_fallback_tunes_small_funded_balance() -> None:
+    scaling = _bridge_account_scaling_summary(
+        active_runtime={},
+        active_snapshot={
+            "balance": 92.0,
+            "equity": 99.31,
+            "free_margin": 99.31,
+            "updated_at": "2026-05-03T22:20:05+00:00",
+        },
+        rollout_stats={"trade_count": 0, "overall": {"win_rate": 0.0, "expectancy_r": 0.0}},
+    )
+
+    assert scaling["current_phase"] == "PHASE_1"
+    assert scaling["phase_reason"] == "equity_below_growth_threshold"
+    assert scaling["current_risk_pct"] == 0.01
+    assert scaling["current_max_risk_pct"] == 0.01
+    assert scaling["new_risk_budget"] == 0.99
+    assert scaling["equity_band"] == "bootstrap_balanced"
+
+
+def test_bridge_account_scaling_fallback_requires_performance_for_phase_two() -> None:
+    unproven = _bridge_account_scaling_summary(
+        active_runtime={},
+        active_snapshot={"balance": 120.0, "equity": 120.0, "free_margin": 120.0},
+        rollout_stats={"trade_count": 3, "overall": {"win_rate": 0.25, "expectancy_r": -0.10}},
+    )
+    proven = _bridge_account_scaling_summary(
+        active_runtime={},
+        active_snapshot={"balance": 120.0, "equity": 120.0, "free_margin": 120.0},
+        rollout_stats={"trade_count": 12, "overall": {"win_rate": 0.50, "expectancy_r": 0.05}},
+    )
+
+    assert unproven["current_phase"] == "PHASE_1"
+    assert unproven["phase_reason"] == "equity_up_but_performance_unproven"
+    assert proven["current_phase"] == "PHASE_2"
+    assert proven["current_max_risk_pct"] == 0.025
 
 
 def _record_live_execution(
