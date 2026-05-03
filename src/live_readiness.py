@@ -46,6 +46,14 @@ def _env_present(env: Mapping[str, str], key: str) -> bool:
     return bool(str(env.get(key, "")).strip())
 
 
+def _number(value: Any, default: float = 0.0) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed == parsed and parsed not in (float("inf"), float("-inf")) else default
+
+
 def _check(name: str, ok: bool, summary: str, *, hard: bool = True, details: Mapping[str, Any] | None = None) -> ReadinessCheck:
     return ReadinessCheck(name=name, status="PASS" if ok else "FAIL", hard=hard, summary=summary, details=dict(details or {}))
 
@@ -82,10 +90,17 @@ def collect_git_probe(root: Path, command_runner: CommandRunner = _default_comma
         return {"is_repo": False, "error": repo_output}
     remote_code, remote_output = command_runner(("git", "remote", "get-url", "origin"), root)
     branch_code, branch_output = command_runner(("git", "branch", "--show-current"), root)
+    head_code, head_output = command_runner(("git", "rev-parse", "--verify", "HEAD"), root)
+    status_code, status_output = command_runner(("git", "status", "--porcelain"), root)
+    dirty_lines = [line for line in status_output.splitlines() if line.strip()] if status_code == 0 else []
     return {
         "is_repo": True,
         "remote": remote_output if remote_code == 0 else "",
         "branch": branch_output if branch_code == 0 else "",
+        "has_head": head_code == 0,
+        "head": head_output if head_code == 0 else "",
+        "dirty_count": len(dirty_lines),
+        "dirty_preview": dirty_lines[:12],
     }
 
 
@@ -156,6 +171,22 @@ def build_live_readiness_report(
             details={"remote": remote, "branch": str(git_payload.get("branch") or ""), "is_repo": bool(git_payload.get("is_repo"))},
         )
     )
+    if bool(git_payload.get("is_repo")):
+        has_head = bool(git_payload.get("has_head", True))
+        dirty_count = int(_number(git_payload.get("dirty_count"), 0.0))
+        checks.append(
+            _check(
+                "git_worktree_clean",
+                has_head and dirty_count == 0,
+                "Git worktree is committed and clean" if has_head and dirty_count == 0 else "Git worktree has uncommitted or untracked changes",
+                hard=require_deploy,
+                details={
+                    "has_head": has_head,
+                    "dirty_count": dirty_count,
+                    "dirty_preview": list(git_payload.get("dirty_preview") or [])[:12],
+                },
+            )
+        )
 
     gh_payload = dict(gh_auth_probe or {})
     checks.append(
@@ -320,6 +351,8 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
         actions.append("Run scripts/apex_telegram_check.py --get-me, then send /start to the bot and run --discover-chat/--send-test.")
     if "git_repository" in names or "github_auth" in names or "cli_gh" in names:
         actions.append("Use a real git checkout of https://github.com/ArohaBookings/nexustrader.git and authenticate gh before pushing.")
+    if "git_worktree_clean" in names:
+        actions.append("Commit or intentionally discard local source changes before deployment sign-off.")
     if "vercel_auth_project" in names or "cli_vercel" in names:
         actions.append("Install/authenticate Vercel CLI and link the dashboard/webhook project before production deploy.")
     if any(check.name == "vercel_runtime_architecture" for check in warnings):
