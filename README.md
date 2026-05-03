@@ -327,6 +327,14 @@ This registers `com.apexbot.bridge` and `com.apexbot.telegram` with `launchd`, k
 ./scripts/stop_local_mac.sh
 ```
 
+Local health doctor:
+
+```bash
+PYTHONPATH=. python3 scripts/apex_local_doctor.py
+```
+
+The doctor checks the detached Mac services, bridge health, fresh MT5 EA polling, Telegram bot identity, and whether the owner chat has been claimed.
+
 1. Open `https://t.me/Nexus_vantage_trader_bot` and send `/start`.
 
 2. Claim the owner chat ID from the first incoming message:

@@ -31,6 +31,11 @@ export PYTHONUNBUFFERED=1
 
 mkdir -p data/run logs
 
+if [[ "${APEX_SERVICE_LOG_REDIRECT:-true}" == "true" && -z "${APEX_BRIDGE_LOG_REDIRECTED:-}" ]]; then
+  export APEX_BRIDGE_LOG_REDIRECTED=1
+  exec "$0" >> logs/local_bridge.log 2>&1
+fi
+
 if [[ "${APEX_LOCAL_START_STRATEGY:-false}" == "true" ]]; then
   if [[ "${LIVE_TRADING:-false}" != "true" ]]; then
     echo "LIVE_TRADING=true is required when APEX_LOCAL_START_STRATEGY=true."

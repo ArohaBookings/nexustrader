@@ -36,4 +36,9 @@ done
 export PYTHONUNBUFFERED=1
 mkdir -p data/run logs
 
+if [[ "${APEX_SERVICE_LOG_REDIRECT:-true}" == "true" && -z "${APEX_TELEGRAM_LOG_REDIRECTED:-}" ]]; then
+  export APEX_TELEGRAM_LOG_REDIRECTED=1
+  exec "$0" >> logs/telegram_poll.log 2>&1
+fi
+
 exec env PYTHONPATH=. python3 -u scripts/apex_telegram_poll.py --claim-owner

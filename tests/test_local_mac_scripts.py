@@ -56,3 +56,18 @@ def test_local_mac_launch_agents_are_defined_for_persistent_services() -> None:
     assert "python3 -u -m src.main --bridge-only" in bridge_runner
     assert "scripts/start_bridge_prod.py" in bridge_runner
     assert "scripts/apex_telegram_poll.py --claim-owner" in telegram_runner
+    assert "APEX_BRIDGE_LOG_REDIRECTED" in bridge_runner
+    assert "logs/local_bridge.log" in bridge_runner
+    assert "APEX_TELEGRAM_LOG_REDIRECTED" in telegram_runner
+    assert "logs/telegram_poll.log" in telegram_runner
+
+
+def test_local_mac_doctor_checks_bridge_mt5_and_telegram() -> None:
+    script = (ROOT / "scripts" / "apex_local_doctor.py").read_text(encoding="utf-8")
+
+    assert "APEX LOCAL DOCTOR" in script
+    assert "ea_polling_fresh" in script
+    assert "telegram_chat_id_missing" in script
+    assert "Nexus_vantage_trader_bot" in script
+    assert "collect_bridge_health" in script
+    assert "apex_telegram_poll.py --claim-owner" in script
