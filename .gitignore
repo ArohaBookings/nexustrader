@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+config/secrets.env
+secrets.env
+.env
+.env.*
+!.env.example
+!config/secrets.env.example
+
+# Runtime state, market data, broker/account records, and generated logs.
+data/
+runtime_logs/
+tmp/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Local JS tooling and the old standalone dashboard experiment. The active bot
+# lives in this root project; do not publish the nested app by accident.
+node_modules/
+nexus-trader/
+dist/
+.vercel/
+.vscode/
+models/*.pkl
+funded-mode-mobile.png
+nexus-trader-desktop.png
+nexus-trader-mobile.png
+
+# Local browser/test artifacts.
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# OS/editor noise.
+.DS_Store

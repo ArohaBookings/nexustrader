@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "trained_at": null,
+  "scorer": null,
+  "risk_modulator": null,
+  "regime_classifier": null
+}

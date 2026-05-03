@@ -1,0 +1,40 @@
+system:
+  mode: "DEMO"
+  symbols: ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDJPY", "AUDNZD", "NZDJPY", "EURJPY", "GBPJPY", "BTCUSD", "NAS100", "USOIL"]
+  always_on_symbols: ["BTCUSD", "AUDJPY", "AUDNZD", "NZDJPY", "NAS100", "USOIL"]
+  max_positions_per_symbol: 10
+  max_positions_total: 20
+  update_interval_seconds: 3
+
+strategy:
+  entry_method: "BREAKOUT_VOLUME_ATR"
+  breakout_lookback: 20
+  min_atr_pct: 0.70
+  min_volume_ratio: 1.00
+  max_spread_points: 45
+  allow_long: true
+  allow_short: true
+  scaling_enabled: true
+  scale_in_step_atr: 0.55
+  pullback_add_enabled: true
+  pullback_ema_distance_atr: 0.35
+  max_entries_per_symbol_loop: 2
+
+risk:
+  risk_per_trade: 0.0025
+  use_fixed_lot: false
+  fixed_lot: 0.01
+  max_trades_per_hour: 12
+  max_same_direction_positions: 10
+
+exits:
+  break_even_trigger_r: 0.70
+  break_even_buffer_r: 0.05
+  partial_close_r: 1.00
+  partial_close_fraction: 0.40
+  partial_close_r2: 2.00
+  partial_close_fraction2: 0.30
+  trail_activation_r: 1.00
+  trail_atr: 1.00
+  basket_take_profit_r: 3.00
+  time_stop_hours: 4

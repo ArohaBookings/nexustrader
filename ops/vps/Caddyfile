@@ -1,0 +1,17 @@
+{
+    auto_https off
+    admin off
+}
+
+http://31.44.5.163 {
+    encode zstd gzip
+
+    @dashboard path /dashboard /dashboard/* /health
+    handle @dashboard {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle {
+        respond "Not Found" 404
+    }
+}

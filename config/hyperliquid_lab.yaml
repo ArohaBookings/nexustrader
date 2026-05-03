@@ -1,0 +1,103 @@
+venue:
+  name: "hyperliquid"
+  market_type: "perps"
+  api_base_url: "https://api.hyperliquid.xyz"
+  ccxt_exchange_id: "hyperliquid"
+
+mode: "research"
+
+assets:
+  - "BTC"
+  - "ETH"
+
+native_intervals:
+  - "1m"
+  - "5m"
+  - "15m"
+  - "1h"
+
+proxy_history:
+  enabled: true
+  source: "kraken"
+  data_quality: "proxy_only"
+  symbols:
+    BTC: "BTC/USD"
+    ETH: "ETH/USD"
+
+storage:
+  root: "data/hyperliquid_lab"
+
+fees:
+  tier: 0
+  perps:
+    taker_rate: 0.00045
+    maker_rate: 0.00015
+
+simulator:
+  max_slippage_bps: 10.0
+  max_order_book_levels: 20
+  min_fill_ratio: 0.50
+  stale_book_timeout_seconds: 5.0
+
+strategy:
+  baseline:
+    name: "moving_average_crossover"
+    short_window: 20
+    long_window: 50
+    risk_fraction: 0.10
+
+backtest:
+  initial_cash: 10000.0
+  fill_model: "bar_close_baseline"
+  periods_per_year: 525600
+
+walk_forward:
+  train_bars: 5000
+  test_bars: 1000
+  step_bars: 1000
+  monte_carlo_iterations: 1000
+  monte_carlo_seed: 42
+
+risk:
+  atr_window: 14
+  volatility_risk_fraction: 0.01
+  max_position_pct: 0.20
+  stop_loss_pct: 0.01
+  max_daily_loss_pct: 0.03
+  kelly_fraction_cap: 0.25
+  circuit_breaker_volatility_multiple: 3.0
+  stale_data_seconds: 60.0
+  max_api_errors: 3
+
+paper:
+  enabled: true
+  mode: "internal_simulator_only"
+  min_observation_days: 14
+  optimization_allowed_during_observation: false
+  order_route: "market_simulator"
+
+telegram:
+  enabled: true
+  bot_username: "Nexus_vantage_trader_bot"
+  token_env: "TELEGRAM_BOT_TOKEN"
+  chat_id_env: "TELEGRAM_CHAT_ID"
+  parse_mode: "HTML"
+  notify_on:
+    - "startup"
+    - "heartbeat"
+    - "data_pull"
+    - "data_integrity"
+    - "simulator_order"
+    - "maker_fill"
+    - "taker_fill"
+    - "partial_fill"
+    - "rejection"
+    - "backtest_complete"
+    - "walk_forward_complete"
+    - "monte_carlo_complete"
+    - "risk_halt"
+    - "circuit_breaker"
+    - "paper_order"
+    - "paper_fill"
+    - "paper_rejection"
+    - "exception"

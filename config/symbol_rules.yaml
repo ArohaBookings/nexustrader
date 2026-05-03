@@ -1,0 +1,199 @@
+symbols:
+  XAUUSD:
+    symbol: "XAUUSD"
+    digits: 2
+    tick_size: 0.01
+    point: 0.01
+    min_stop_points: 120
+    freeze_points: 30
+    typical_spread_points: 35
+    max_slippage_points: 50
+    tick_value: 1.0
+    contract_size: 100.0
+  EURUSD:
+    symbol: "EURUSD"
+    digits: 5
+    tick_size: 0.00001
+    point: 0.00001
+    min_stop_points: 40
+    freeze_points: 20
+    typical_spread_points: 15
+    max_slippage_points: 25
+    tick_value: 1.0
+    contract_size: 100000.0
+  GBPUSD:
+    symbol: "GBPUSD"
+    digits: 5
+    tick_size: 0.00001
+    point: 0.00001
+    min_stop_points: 45
+    freeze_points: 20
+    typical_spread_points: 18
+    max_slippage_points: 28
+    tick_value: 1.0
+    contract_size: 100000.0
+  USDJPY:
+    symbol: "USDJPY"
+    digits: 3
+    tick_size: 0.001
+    point: 0.001
+    min_stop_points: 45
+    freeze_points: 20
+    typical_spread_points: 16
+    max_slippage_points: 25
+    tick_value: 0.9
+    contract_size: 100000.0
+  AUDJPY:
+    symbol: "AUDJPY"
+    digits: 3
+    tick_size: 0.001
+    point: 0.001
+    min_stop_points: 55
+    freeze_points: 20
+    typical_spread_points: 95
+    max_slippage_points: 120
+    tick_value: 0.9
+    contract_size: 100000.0
+  NZDJPY:
+    symbol: "NZDJPY"
+    digits: 3
+    tick_size: 0.001
+    point: 0.001
+    min_stop_points: 55
+    freeze_points: 20
+    typical_spread_points: 22
+    max_slippage_points: 35
+    tick_value: 0.9
+    contract_size: 100000.0
+  EURJPY:
+    symbol: "EURJPY"
+    digits: 3
+    tick_size: 0.001
+    point: 0.001
+    min_stop_points: 50
+    freeze_points: 20
+    typical_spread_points: 24
+    max_slippage_points: 38
+    tick_value: 0.9
+    contract_size: 100000.0
+  GBPJPY:
+    symbol: "GBPJPY"
+    digits: 3
+    tick_size: 0.001
+    point: 0.001
+    min_stop_points: 60
+    freeze_points: 20
+    typical_spread_points: 28
+    max_slippage_points: 45
+    tick_value: 0.9
+    contract_size: 100000.0
+  AUDNZD:
+    symbol: "AUDNZD"
+    digits: 5
+    tick_size: 0.00001
+    point: 0.00001
+    min_stop_points: 55
+    freeze_points: 20
+    typical_spread_points: 140
+    max_slippage_points: 180
+    tick_value: 1.0
+    contract_size: 100000.0
+  EURGBP:
+    symbol: "EURGBP"
+    digits: 5
+    tick_size: 0.00001
+    point: 0.00001
+    min_stop_points: 45
+    freeze_points: 20
+    typical_spread_points: 18
+    max_slippage_points: 28
+    tick_value: 1.0
+    contract_size: 100000.0
+  BTCUSD:
+    symbol: "BTCUSD"
+    digits: 2
+    tick_size: 0.01
+    point: 0.01
+    min_stop_points: 600
+    freeze_points: 100
+    typical_spread_points: 120
+    max_slippage_points: 120
+    tick_value: 1.0
+    contract_size: 1.0
+  DOGUSD:
+    symbol: "DOGUSD"
+    digits: 5
+    tick_size: 0.00001
+    point: 0.00001
+    min_stop_points: 500
+    freeze_points: 80
+    typical_spread_points: 220
+    max_slippage_points: 260
+    tick_value: 1.0
+    contract_size: 1.0
+  TRUMPUSD:
+    symbol: "TRUMPUSD"
+    digits: 5
+    tick_size: 0.00001
+    point: 0.00001
+    min_stop_points: 650
+    freeze_points: 90
+    typical_spread_points: 280
+    max_slippage_points: 320
+    tick_value: 1.0
+    contract_size: 1.0
+  XAGUSD:
+    symbol: "XAGUSD"
+    digits: 2
+    tick_size: 0.01
+    point: 0.01
+    min_stop_points: 110
+    freeze_points: 30
+    typical_spread_points: 30
+    max_slippage_points: 45
+    tick_value: 1.0
+    contract_size: 5000.0
+  NAS100:
+    symbol: "NAS100"
+    digits: 1
+    tick_size: 0.1
+    point: 0.1
+    min_stop_points: 80
+    freeze_points: 20
+    typical_spread_points: 60
+    max_slippage_points: 90
+    tick_value: 1.0
+    contract_size: 1.0
+  USOIL:
+    symbol: "USOIL"
+    digits: 2
+    tick_size: 0.01
+    point: 0.01
+    min_stop_points: 150
+    freeze_points: 40
+    typical_spread_points: 8
+    max_slippage_points: 20
+    tick_value: 1.0
+    contract_size: 100.0
+  AAPL:
+    symbol: "AAPL"
+    digits: 2
+    tick_size: 0.01
+    point: 0.01
+    min_stop_points: 20
+    freeze_points: 5
+    typical_spread_points: 8
+    max_slippage_points: 18
+    tick_value: 1.0
+    contract_size: 1.0
+  NVIDIA:
+    symbol: "NVIDIA"
+    digits: 2
+    tick_size: 0.01
+    point: 0.01
+    min_stop_points: 20
+    freeze_points: 5
+    typical_spread_points: 10
+    max_slippage_points: 20
+    tick_value: 1.0
+    contract_size: 1.0

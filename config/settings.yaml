@@ -1,0 +1,1463 @@
+system:
+  mode: "LIVE"  # DRY_RUN, DEMO, PAPER, LIVE
+  symbol: "XAUUSD"
+  symbols:
+    - "XAUUSD"
+    - "XAGUSD"
+    - "EURUSD"
+    - "GBPUSD"
+    - "EURGBP"
+    - "USDJPY"
+    - "AUDJPY"
+    - "NZDJPY"
+    - "AUDNZD"
+    - "EURJPY"
+    - "GBPJPY"
+    - "BTCUSD"
+    - "DOGUSD"
+    - "TRUMPUSD"
+    - "NAS100"
+    - "USOIL"
+    - "AAPL"
+    - "NVIDIA"
+  always_on_symbols:
+    - "BTCUSD"
+  mt5_terminal_path: ""
+  trading_enabled: true
+  live_trading_enabled: true
+  max_positions: 60
+  max_positions_per_symbol: 14
+  max_positions_total: 60
+  update_interval_seconds: 5
+  timeframe_map:
+    execution: "M5"
+    direction: "M15"
+    regime: "H1"
+  live_trading: true
+  force_flat_friday_gmt: "20:00"
+  hard_kill_ttl_hours: 1
+  hard_kill_sydney_reset_enabled: true
+  symbol_mapping:
+    XAUUSD: ["XAUUSD", "XAUUSDm", "GOLD", "GOLDm", "GOLD.m"]
+    XAGUSD: ["XAGUSD", "XAGUSDm", "SILVER", "SILVERm", "SILVER.m"]
+    EURUSD: ["EURUSD", "EURUSD.a", "EURUSDm"]
+    GBPUSD: ["GBPUSD", "GBPUSD.a", "GBPUSDm"]
+    EURGBP: ["EURGBP", "EURGBP.a", "EURGBPm"]
+    USDJPY: ["USDJPY", "USDJPY.a", "USDJPYm"]
+    AUDJPY: ["AUDJPY", "AUDJPY.a", "AUDJPYm"]
+    AUDNZD: ["AUDNZD", "AUDNZD.a", "AUDNZDm"]
+    EURJPY: ["EURJPY", "EURJPY.a", "EURJPYm"]
+    GBPJPY: ["GBPJPY", "GBPJPY.a", "GBPJPYm"]
+    BTCUSD: ["BTCUSD", "BTCUSDm", "BTCUSD.a", "XBTUSD"]
+    DOGUSD: ["DOGUSD", "DOGEUSD", "DOGUSDm", "DOGEUSDm", "DOGUSD.a", "DOGEUSD.a"]
+    TRUMPUSD: ["TRUMPUSD", "TRUMPUSDT", "TRUMPUSDm", "TRUMPUSD.a"]
+    NAS100: ["NAS100", "US100", "NASDAQ", "USTEC", "NAS", "NQ"]
+    USOIL: ["USOIL", "XTIUSD", "OILUSD", "WTI", "CL"]
+    AAPL: ["AAPL", "#AAPL", "AAPL.24H"]
+    NVIDIA: ["NVIDIA", "NVDA", "#NVDA", "NVIDIA.24H", "NVDA.24H"]
+  market_universe:
+    enabled: true
+    trade_discovered_symbols: true
+    live_startup_discovery_enabled: false
+    include_asset_classes: ["forex", "commodity", "crypto", "index", "equity"]
+    max_symbols_per_class:
+      forex: 24
+      commodity: 16
+      crypto: 32
+      index: 12
+      equity: 48
+    snapshot_file: "data/discovered_symbol_universe.json"
+    history_warmup_enabled: true
+    live_history_warmup_enabled: false
+    history_warmup_max_symbols: 64
+    history_warmup_timeframes:
+      M5: 6000
+      M15: 3000
+      H1: 6000
+      H4: 4500
+      D1: 3200
+
+risk:
+  risk_per_trade: 0.01
+  use_fixed_lot: false
+  fixed_lot: 0.01
+  max_lot_per_trade: 2.0
+  fee_per_lot_estimate: 7.0
+  hard_risk_cap: 0.02
+  max_daily_loss: 0.02
+  circuit_breaker_daily_loss: 0.05
+  soft_daily_dd_pct: 0.07
+  hard_daily_dd_pct: 0.10
+  daily_caution_threshold_pct: 0.10
+  daily_defensive_threshold_pct: 0.12
+  daily_hard_stop_threshold_pct: 0.14
+  daily_governor_timeout_hours: 4.0
+  daily_normal_quality_floor: 0.58
+  daily_caution_quality_floor: 0.70
+  daily_defensive_quality_floor: 0.85
+  daily_normal_risk_multiplier: 1.0
+  daily_caution_risk_multiplier: 0.75
+  daily_defensive_risk_multiplier: 0.45
+  daily_hard_stop_risk_multiplier: 0.0
+  recovery_risk_multiplier: 0.60
+  soft_dd_probability_floor: 0.68
+  soft_dd_expected_value_floor: 0.30
+  soft_dd_confluence_floor: 3.5
+  max_drawdown_kill: 0.10
+  absolute_drawdown_hard_stop: 0.20
+  max_spread_points: 60
+  spread_disorder_points: 50
+  max_slippage_points: 10
+  use_kelly: true
+  kelly_fraction: 0.25
+  max_same_direction_positions: 10
+  correlation_window_minutes: 15
+  loss_cooldown_trades: 2
+  loss_cooldown_size_factor: 0.5
+  atr_spike_multiple: 2.0
+  volatility_shock_pause_minutes: 30
+  max_trades_per_hour: 180
+  min_stop_distance_points: 0
+  max_positions_per_symbol: 18
+  max_positions_total: 96
+  max_positions_total_hard_cap: 96
+  anti_martingale:
+    enabled: false
+    step: 0.05
+    cap: 1.25
+  funded:
+    enabled: false
+    group: "custom"
+    phase: "evaluation"
+    starting_balance: 100.0
+    daily_loss_limit_pct: 0.05
+    overall_drawdown_limit_pct: 0.10
+    profit_target_pct: 0.08
+    guard_buffer_pct: 0.02
+
+risk_scaling:
+  enabled: true
+  idle_minutes_for_boost: 10
+  max_effective_risk_pct_non_grid: 0.02
+  max_effective_risk_pct_xau_grid: 0.10
+  require_daily_non_negative: false
+  require_no_open_positions: false
+  trade_quality_floor: 0.58
+  trade_quality_exception_floor: 0.60
+  trade_quality_exception_probability_floor: 0.60
+  trade_quality_exception_ev_floor: 0.20
+  trade_quality_exception_confluence_floor: 3.0
+
+micro_account_mode:
+  enabled: true
+  account_currency: "NZD"
+  min_lot: 0.01
+  micro_max_loss_usd: 2.5
+  micro_total_risk_usd: 5.0
+  max_positions_total_micro: 6
+  max_positions_per_symbol_micro: 3
+  min_trades_for_normal_risk: 50
+  risk_pct_floor: 0.0025
+  risk_pct_ceiling: 0.02
+  daily_loss_pct_limit: 0.015
+  first_trade_protection_trades: 2
+  first_trade_size_factor: 0.75
+  first_trade_max_sl_atr: 1.4
+  cooldown_minutes_after_loss: 8
+  cooldown_minutes_after_win: 1
+  one_trade_at_a_time: false
+  one_trade_until_equity: 50
+  two_trade_until_equity: 100
+  max_positions_total_mid: 5
+  max_positions_per_symbol_mid: 1
+  max_lot_cap_low: 0.01
+  max_lot_cap_mid: 0.02
+  max_lot_cap_high: 0.05
+  lot_cap_mid_equity: 50
+  lot_cap_high_equity: 100
+  min_stop_distance_points: 20
+  internal_equity_estimate: 50
+  bootstrap_enabled: true
+  bootstrap_equity_threshold: 160
+  bootstrap_per_trade_hard_cap: 4.0
+  bootstrap_total_exposure_cap: 10.0
+  bootstrap_min_risk_amount: 1.0
+  bootstrap_min_lot_risk_multiplier: 6.0
+  bootstrap_drawdown_kill: 0.20
+  bootstrap_first_trade_max_sl_atr: 3.0
+  bootstrap_max_positions_total: 6
+  bootstrap_max_positions_per_symbol: 3
+
+strategy:
+  entry_method: "BREAKOUT_VOLUME_ATR"  # BREAKOUT_VOLUME_ATR or EMA_IMPULSE_BREAKOUT
+  breakout_lookback: 20
+  min_atr_pct: 0.75
+  min_volume_ratio: 1.0
+  max_spread_points: 60
+  allow_long: true
+  allow_short: true
+  scaling_enabled: false
+  scale_in_step_atr: 0.6
+  pullback_add_enabled: false
+  pullback_ema_distance_atr: 0.35
+  max_entries_per_symbol_loop: 4
+
+xau_grid_scalper:
+  enabled: true
+  symbol: "XAUUSD"
+  timeframe: "M5"
+  active_profile: "density_branch"
+  proof_mode: "density_branch"
+  checkpoint_artifact: "/tmp/xau_checkpoint_prime_suite_v4.json"
+  density_branch_artifact: "/tmp/xau_density_prime_suite_v6.json"
+  native_live_only: true
+  mirror_overlay_enabled: false
+  profiles:
+    checkpoint:
+      density_first_mode: false
+      prime_burst_entries: 6
+      aggressive_add_burst_entries: 4
+      quota_target_actions_per_window: 6
+      quota_min_actions_per_window: 5
+      micro_take_enabled: false
+    density_branch:
+      density_first_mode: true
+      prime_burst_entries: 16
+      aggressive_add_burst_entries: 10
+      quota_target_actions_per_window: 18
+      quota_min_actions_per_window: 12
+      micro_take_enabled: true
+      session_density_overrides:
+        SYDNEY:
+          quota_target_actions_per_window: 10
+          quota_min_actions_per_window: 8
+          quota_catchup_burst_cap: 10
+          prime_burst_entries: 8
+          aggressive_add_burst_entries: 6
+          density_soft_penalty_max: 0.08
+        TOKYO:
+          quota_target_actions_per_window: 12
+          quota_min_actions_per_window: 9
+          quota_catchup_burst_cap: 12
+          prime_burst_entries: 9
+          aggressive_add_burst_entries: 7
+          density_soft_penalty_max: 0.08
+        LONDON:
+          quota_target_actions_per_window: 20
+          quota_min_actions_per_window: 14
+          quota_catchup_burst_cap: 20
+          prime_burst_entries: 18
+          aggressive_add_burst_entries: 12
+          density_soft_penalty_max: 0.06
+        OVERLAP:
+          quota_target_actions_per_window: 18
+          quota_min_actions_per_window: 12
+          quota_catchup_burst_cap: 18
+          prime_burst_entries: 16
+          aggressive_add_burst_entries: 10
+          density_soft_penalty_max: 0.05
+        NEW_YORK:
+          quota_target_actions_per_window: 20
+          quota_min_actions_per_window: 14
+          quota_catchup_burst_cap: 20
+          prime_burst_entries: 18
+          aggressive_add_burst_entries: 12
+          density_soft_penalty_max: 0.07
+
+  allowed_sessions:
+    - "SYDNEY"
+    - "TOKYO"
+    - "LONDON"
+    - "OVERLAP"
+    - "NEW_YORK"
+  prime_burst_entries: 16
+  moderate_burst_entries: 8
+  aggressive_add_burst_entries: 10
+  quota_target_actions_per_window: 18
+  quota_min_actions_per_window: 12
+  quota_catchup_burst_cap: 20
+  density_first_mode: true
+  density_soft_penalty_max: 0.16
+  session_density_overrides: {}
+  monte_carlo_win_rate_floor: 0.80
+  burst_window_minutes: 10
+  prime_recovery_idle_minutes: 20
+  prime_recovery_threshold_relax: 0.08
+  prime_recovery_score_boost: 1.5
+  ema_stretch_k: 0.35
+  step_atr_k: 0.20
+  step_points_min: 16
+  step_points_max: 30
+  point_size: 0.01
+  stop_atr_k: 1.8
+  entry_stop_atr_k: 0.55
+  add_stop_atr_k: 0.65
+  entry_stop_step_multiplier: 4.5
+  add_stop_step_multiplier: 5.0
+  entry_stop_points_min: 120
+  entry_stop_points_max: 160
+  add_stop_points_min: 140
+  add_stop_points_max: 180
+  max_levels: 8
+  max_open_positions_symbol: 12
+  max_open_cycles: 3
+  base_lot: 0.01
+  allow_mild_scale: true
+  sub_budget_pct: 0.45
+  caution_cycle_quality: 0.75
+  defensive_cycle_quality: 0.85
+  caution_risk_multiplier: 1.05
+  defensive_risk_multiplier: 0.85
+  probe_leg_enabled: true
+  probe_stretch_factor: 0.55
+  probe_min_confluence: 1.8
+  lot_schedule:
+    - 0.01
+    - 0.01
+    - 0.01
+    - 0.01
+    - 0.015
+    - 0.015
+    - 0.02
+    - 0.02
+  profit_target_usd: 0.28
+  micro_take_enabled: true
+  micro_take_usd: 0.10
+  density_micro_scaler_enabled: true
+  density_micro_scaler_mc_floor_relax: 0.04
+  prime_directional_stop_points_boost: 1.10
+  density_micro_stop_points_boost: 1.06
+  prime_directional_tp_r_bonus: 0.22
+  density_micro_tp_r: 1.90
+  max_cycle_minutes: 8
+  time_exit_bounce_atr: 0.15
+  time_exit_loss_usd_cap: 0.8
+  spread_max_points: 45
+  add_spread_max_points: 35
+  flatten_spread_points: 55
+  atr_spike_threshold: 2.0
+  volatility_pause_minutes: 20
+  cooldown_after_stop_minutes: 10
+  entry_deceleration_lookback: 4
+  entry_deceleration_factor: 1.05
+  rsi_period: 7
+  rsi_overbought: 68
+  rsi_oversold: 32
+  news_block_new_cycles: true
+  news_block_adds: true
+  allow_news_high_confluence: true
+  news_override_min_probability: 0.72
+  news_override_min_confluence: 4.0
+  news_override_size_multiplier: 0.5
+  asia_probe_enabled: true
+  asia_probe_sessions: ["TOKYO", "SYDNEY"]
+  asia_probe_spread_max_points: 24
+  asia_probe_atr_ratio_max: 1.10
+  asia_probe_spread_atr_ratio_cap: 1.45
+  asia_probe_mc_floor: 0.80
+  asia_probe_grid_lot_multiplier: 0.50
+  london_aggressive_hours_utc: [7, 12]
+  ny_aggressive_hours_utc: [12, 17]
+  no_progress_minutes: 1
+  reclaim_volume_ratio_min: 0.76
+  delta_pressure_threshold: 0.50
+  attack_grid_spacing_multiplier: 0.82
+  defensive_grid_spacing_multiplier: 1.18
+  attack_grid_lot_multiplier: 1.25
+  defensive_grid_lot_multiplier: 0.80
+  spread_spacing_multiplier: 3.0
+  spread_spacing_buffer_points: 5.0
+  risk_per_cycle_pct: 0.10
+  risk:
+    cycle_risk_pct_default: 0.08
+    cycle_risk_pct_min: 0.02
+    cycle_risk_pct_max: 0.08
+    max_loss_usd_floor: 0.50
+
+xau_multi_engine:
+  active_sessions:
+    - "SYDNEY"
+    - "TOKYO"
+    - "LONDON"
+    - "OVERLAP"
+    - "NEW_YORK"
+  m1:
+    enabled: true
+    min_impulse_ratio: 0.34
+    min_volume_ratio: 0.82
+    confluence_floor: 2.2
+  m15:
+    enabled: true
+    confluence_floor: 3.2
+    breakout_atr_threshold: 0.10
+
+candidate_sensitivity:
+  forex: 1.18
+  nas100: 1.15
+  usoil: 1.12
+
+risk_ramp:
+  enabled: true
+  no_trade_minutes: 60
+  after_minutes: 45
+  step_pct: 0.02
+  max_pct: 0.10
+  max_risk_pct: 0.10
+  interval_minutes: 15
+  reset_on_trade: true
+  reset_on_daily_loss_hit: true
+
+evaluation_cadence:
+  loop_sleep_seconds: 1
+  default_symbol_seconds: 1
+  fast_symbol_seconds: 1
+  fast_symbols:
+    - "XAUUSD"
+    - "BTCUSD"
+    - "NAS100"
+    - "USDJPY"
+  fast_sessions:
+    - "LONDON"
+    - "OVERLAP"
+    - "NEW_YORK"
+  risk_log_dedupe_seconds: 30
+
+ai:
+  enabled: true
+  remote_enabled: true
+  live_remote_ai_enabled: false
+  offline_gpt_enabled: true
+  openai_api_env: "OPENAI_API_KEY"
+  openai_model: "gpt-4o-mini"
+  openai_timeout_seconds: 10.0
+  openai_retry_once: true
+  remote_score_enabled: false
+  offline_review_limit_trades: 200
+  offline_mc_min_realities: 500
+  offline_mc_pass_floor: 0.88
+  new_pair_observation_days: 1
+  new_pair_observation_hours: 4
+  trajectory_short_target_equity: 100000
+  trajectory_medium_target_equity: 1000000
+  min_probability: 0.56
+  min_probability_range: 0.53
+  min_probability_breakout: 0.56
+  min_probability_trend: 0.58
+  min_probability_expected_value: 0.10
+  retrain_nightly: false
+  online_learning_min_samples: 50
+  market_history_cache_dir: "data/candles_cache"
+  market_history_seed_enabled: true
+  market_history_seed_max_samples: 3000
+  market_history_seed_forward_bars: 8
+  market_history_seed_min_rows_per_file: 240
+  market_history_backfill_enabled: true
+  market_history_backfill_years: 10
+  brain_review_backtest_windows: ["M15", "H1", "D1"]
+  meeting_pair_directives_enabled: true
+  feature_window_days: 90
+  ab_promotion_min_win_rate_gain: 0.02
+  regime_detection: true
+  dynamic_sizing: true
+  session_threshold_offsets:
+    TOKYO: 0.01
+    SYDNEY: 0.02
+    LONDON: 0.0
+    OVERLAP: -0.01
+    NEW_YORK: 0.0
+  adaptive_min_probability_floor: 0.50
+  online_min_probability: 0.40
+  online_window_trades: 1000
+  online_maintenance_interval_hours: 4
+  online_promotion_min_delta: 0.02
+  online_promotion_min_samples: 100
+
+idea_lifecycle:
+  archive_minutes: 10
+  max_rechecks_per_idea: 5
+  max_active_ideas_per_symbol: 3
+  recheck_seconds_default: 60
+  reject_display_limit: 2
+  recheck_seconds_by_session:
+    TOKYO: 60
+    SYDNEY: 60
+    LONDON: 30
+    OVERLAP: 20
+    NEW_YORK: 20
+    DEFAULT: 60
+  cooldown_seconds_by_session:
+    TOKYO: 45
+    SYDNEY: 45
+    LONDON: 20
+    OVERLAP: 15
+    NEW_YORK: 15
+    DEFAULT: 30
+
+sessions:
+  windows:
+    - name: "TOKYO"
+      start: "00:00"
+      end: "07:00"
+      enabled: true
+      liquidity_tier: "LOW"
+      size_multiplier: 0.75
+      confluence_delta: 0
+      ai_threshold_offset: 0.0
+      allow_trend: true
+      allow_range: true
+      allow_fakeout: true
+    - name: "LONDON"
+      start: "07:00"
+      end: "13:00"
+      enabled: true
+      liquidity_tier: "HIGH"
+      size_multiplier: 1.0
+      confluence_delta: 0
+      ai_threshold_offset: 0.0
+      allow_trend: true
+      allow_range: true
+      allow_fakeout: true
+    - name: "OVERLAP"
+      start: "13:00"
+      end: "17:00"
+      enabled: true
+      liquidity_tier: "VERY_HIGH"
+      size_multiplier: 1.0
+      confluence_delta: -1
+      ai_threshold_offset: -0.01
+      allow_trend: true
+      allow_range: true
+      allow_fakeout: true
+    - name: "NEW_YORK"
+      start: "17:00"
+      end: "21:00"
+      enabled: true
+      liquidity_tier: "HIGH"
+      size_multiplier: 0.95
+      confluence_delta: 0
+      ai_threshold_offset: 0.0
+      allow_trend: true
+      allow_range: true
+      allow_fakeout: true
+    - name: "SYDNEY"
+      start: "21:00"
+      end: "00:00"
+      enabled: true
+      liquidity_tier: "LOW"
+      size_multiplier: 0.7
+      confluence_delta: 0
+      ai_threshold_offset: 0.01
+      allow_trend: true
+      allow_range: true
+      allow_fakeout: true
+
+strategy_router:
+  enabled: true
+  max_spread_points: 60
+  spread_profiles:
+    USDJPY: 32
+    AUDJPY: 42
+    NZDJPY: 40
+    AUDNZD: 30
+    EURJPY: 44
+    GBPJPY: 52
+    EURGBP: 24
+    NAS100: 95
+    USOIL: 22
+  candidate_tiers:
+    b_tier_size_mult_min: 0.70
+    b_tier_size_mult_max: 0.90
+    high_liquidity_loosen_pct: 0.30
+    candidate_scarcity_loosen_pct: 0.16
+    recycle_regime_boost: 0.25
+    recycle_max_per_family_per_day: 1
+    family_rotation_window_trades: 20
+    family_rotation_share_threshold: 0.60
+    family_rotation_score_penalty: 0.20
+    compression_burst_candidates: 8
+    compression_burst_size_multiplier: 1.28
+    xau_m5_burst_target: 24
+    xau_prime_session_mult: 3.10
+    transition_score_bonus: 0.35
+    transition_size_multiplier: 1.20
+    velocity_decay_trigger_trades_per_10_bars: 1.8
+    velocity_decay_score_penalty: 0.15
+    velocity_decay_base_multiplier: 0.85
+    btc_weekend_score_bonus: 0.68
+    btc_weekend_size_boost: 1.30
+    btc_weekend_burst_target: 72
+    all_pairs_aggression: 1.36
+    btc_velocity_decay_trigger_trades_per_10_bars: 2.6
+    xau_grid_compression_spacing_multiplier: 1.32
+    xau_grid_expansion_burst_size_multiplier: 1.25
+    density_profiles:
+      "asset:crypto":
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        weekend_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.05
+        size_bonus: 0.06
+        activation_score: 0.50
+        entry_cap: 8
+        compression_candidates: 8
+        compression_multiplier: 1.24
+      "asset:equity":
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.04
+        activation_score: 0.56
+        entry_cap: 4
+        compression_candidates: 4
+        compression_multiplier: 1.12
+      "asset:index":
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.05
+        activation_score: 0.54
+        entry_cap: 6
+        compression_candidates: 6
+        compression_multiplier: 1.16
+      XAUUSD:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.06
+        size_bonus: 0.10
+        activation_score: 0.40
+        entry_cap: 54
+        compression_candidates: 34
+        compression_multiplier: 1.56
+      BTCUSD:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        weekend_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.08
+        size_bonus: 0.10
+        activation_score: 0.46
+        entry_cap: 22
+        compression_candidates: 22
+        compression_multiplier: 1.42
+      NAS100:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.05
+        size_bonus: 0.07
+        activation_score: 0.51
+        entry_cap: 12
+        compression_candidates: 12
+        compression_multiplier: 1.28
+      USDJPY:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.05
+        size_bonus: 0.06
+        activation_score: 0.51
+        entry_cap: 12
+        compression_candidates: 12
+        compression_multiplier: 1.24
+      AUDJPY:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP"]
+        rank_bonus: 0.03
+        size_bonus: 0.04
+        activation_score: 0.53
+        entry_cap: 6
+        compression_candidates: 6
+        compression_multiplier: 1.20
+      AUDNZD:
+        sessions: ["SYDNEY", "TOKYO", "LONDON"]
+        rank_bonus: 0.03
+        size_bonus: 0.04
+        activation_score: 0.52
+        entry_cap: 6
+        compression_candidates: 6
+        compression_multiplier: 1.18
+      NZDJPY:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP"]
+        rank_bonus: 0.03
+        size_bonus: 0.04
+        activation_score: 0.53
+        entry_cap: 6
+        compression_candidates: 6
+        compression_multiplier: 1.20
+      EURUSD:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.02
+        size_bonus: 0.03
+        activation_score: 0.54
+        entry_cap: 6
+        compression_candidates: 6
+        compression_multiplier: 1.18
+      GBPUSD:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.02
+        size_bonus: 0.03
+        activation_score: 0.54
+        entry_cap: 6
+        compression_candidates: 6
+        compression_multiplier: 1.18
+      XAGUSD:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.05
+        activation_score: 0.52
+        entry_cap: 7
+        compression_candidates: 7
+        compression_multiplier: 1.22
+      DOGUSD:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        weekend_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.05
+        activation_score: 0.52
+        entry_cap: 7
+        compression_candidates: 7
+        compression_multiplier: 1.22
+      TRUMPUSD:
+        sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        weekend_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.05
+        activation_score: 0.52
+        entry_cap: 7
+        compression_candidates: 7
+        compression_multiplier: 1.22
+      USOIL:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.02
+        size_bonus: 0.04
+        activation_score: 0.54
+        entry_cap: 5
+        compression_candidates: 5
+        compression_multiplier: 1.16
+      AAPL:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.04
+        activation_score: 0.55
+        entry_cap: 5
+        compression_candidates: 5
+        compression_multiplier: 1.16
+      NVIDIA:
+        sessions: ["LONDON", "OVERLAP", "NEW_YORK"]
+        rank_bonus: 0.03
+        size_bonus: 0.04
+        activation_score: 0.55
+        entry_cap: 5
+        compression_candidates: 5
+        compression_multiplier: 1.16
+    a_plus_attack_thresholds:
+      structure_cleanliness_score: 0.80
+      regime_fit: 0.75
+      execution_quality_fit: 0.70
+  btc:
+    trade_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+    allowed_start_hour_utc: 0
+    allowed_end_hour_utc: 24
+    spread_cap_points: 2500
+    min_ai_confidence: 0.56
+    volatility_pause_move_pct_30m: 0.015
+    funding_rate_min_abs: 0.001
+    liquidation_usd_threshold: 10000000
+    whale_flow_threshold_btc: 5000
+    dxy_move_threshold: 0.003
+    weekend_gap_min_pct: 0.02
+
+nas_strategy:
+  enabled: true
+  timezone: "America/New_York"
+  ny_cash_open: "09:30"
+  ny_cash_close: "16:00"
+  sessions:
+    cash_open_minutes: 120
+    power_hour_minutes: 60
+    asia_enabled: true
+  spread_caps_by_session:
+    CASH_OPEN: 110
+    POWER_HOUR: 95
+    NY_CORE: 85
+    OVERLAP: 90
+    LONDON: 85
+    TOKYO: 90
+    SYDNEY: 90
+    DEFAULT: 90
+  trade_rate_targets_by_session:
+    CASH_OPEN: 4.0
+    POWER_HOUR: 3.0
+    NY_CORE: 2.5
+    OVERLAP: 2.0
+    LONDON: 1.5
+    TOKYO: 0.5
+    SYDNEY: 0.4
+    DEFAULT: 1.5
+  confluence_floor: 0.62
+  orb_minutes: 10
+  vwap_k_atr: 0.8
+  cooldown_seconds: 45
+  risk:
+    base_risk_pct: 0.012
+    max_daily_loss_pct: 0.02
+    max_open_positions: 1
+
+oil_strategy:
+  enabled: true
+  timezone: "America/New_York"
+  sessions:
+    asia_enabled: true
+  spread_caps_by_session:
+    OVERLAP: 42
+    NEW_YORK: 44
+    LONDON: 40
+    TOKYO: 28
+    SYDNEY: 26
+    DEFAULT: 40
+  trade_rate_targets_by_session:
+    NEW_YORK: 2.0
+    OVERLAP: 1.5
+    LONDON: 1.0
+    TOKYO: 0.4
+    SYDNEY: 0.4
+    DEFAULT: 1.0
+  confluence_floor: 0.64
+  news_armed:
+    enabled: true
+    eia_window_minutes_pre: 10
+    eia_window_minutes_post: 30
+    stricter_confluence_floor: 0.74
+    stricter_spread_cap: 32
+    volatility_cap: 1.30
+  risk:
+    base_risk_pct: 0.01
+    max_daily_loss_pct: 0.02
+    max_open_positions: 1
+
+news:
+  enabled: true
+  mode: "ALLOW_HIGH_CONF"  # SAFE | ALLOW_HIGH_CONF | OFF
+  provider: "finnhub"
+  cache_ttl_seconds: 300
+  api_key: ""
+  block_high_impact: true
+  block_medium_impact: false
+  block_window_minutes_before: 30
+  block_window_minutes_after: 15
+  fail_open: false
+  unknown_block_session_names:
+    - "london_only"
+    - "london_ny_overlap"
+    - "new_york_only"
+  api_base_url: "https://finnhub.io/api/v1/calendar/economic"
+  api_key_env: "FINNHUB_API_KEY"
+  fallback_provider: "tradingeconomics"
+  fallback_api_base_url: "https://api.tradingeconomics.com/calendar"
+  fallback_api_key_env: "TRADINGECONOMICS_API_KEY"
+  log_refresh_seconds: 900
+  http_timeout_seconds: 6.0
+  http_retries: 2
+  stale_cache_max_age_multiplier: 12
+  user_agent: "Mozilla/5.0 (ApexBot News)"
+  rss_headline_limit: 6
+  supplemental_rss_feeds:
+    - label: "Investing Forex News"
+      url: "https://www.investing.com/rss/news_1.rss"
+      enabled: true
+      max_items: 6
+    - label: "Investing Commodities & Futures News"
+      url: "https://www.investing.com/rss/news_11.rss"
+      enabled: true
+      max_items: 6
+    - label: "Investing Economic Indicators News"
+      url: "https://www.investing.com/rss/news_95.rss"
+      enabled: true
+      max_items: 6
+  bias:
+    enabled: true
+    lookback_minutes: 240
+
+microstructure:
+  enabled: true
+  symbols: ["XAUUSD", "XAGUSD", "BTCUSD", "DOGUSD", "TRUMPUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDJPY", "NZDJPY", "AUDNZD", "NAS100", "USOIL", "AAPL", "NVIDIA"]
+  tick_count: 96
+  stale_after_seconds: 45
+
+lead_lag:
+  enabled: true
+  weights_by_symbol:
+    XAUUSD:
+      dxy: 0.40
+      yields: 0.25
+      nas100: 0.20
+      usoil: 0.15
+    BTCUSD:
+      nas100: 0.40
+      dxy: 0.25
+      usd_liquidity: 0.20
+      weekend_volatility: 0.15
+    XAGUSD:
+      dxy: 0.28
+      yields: 0.14
+      risk_sentiment: 0.28
+      nas100: 0.18
+      usoil: 0.12
+    DOGUSD:
+      btc: 0.30
+      nas100: 0.24
+      dxy: 0.18
+      usd_liquidity: 0.16
+      weekend_volatility: 0.12
+    TRUMPUSD:
+      btc: 0.30
+      nas100: 0.24
+      dxy: 0.18
+      usd_liquidity: 0.16
+      weekend_volatility: 0.12
+    NAS100:
+      yields: 0.32
+      usd_liquidity: 0.26
+      dxy: 0.18
+      risk_sentiment: 0.14
+      btc: 0.10
+    USOIL:
+      dxy: 0.30
+      risk_sentiment: 0.22
+      nas100: 0.18
+      usd_liquidity: 0.16
+      yields: 0.14
+    AAPL:
+      nas100: 0.36
+      yields: 0.24
+      usd_liquidity: 0.18
+      risk_sentiment: 0.14
+      dxy: 0.08
+    NVIDIA:
+      nas100: 0.36
+      yields: 0.24
+      usd_liquidity: 0.18
+      risk_sentiment: 0.14
+      dxy: 0.08
+    USDJPY:
+      fx_spread: 0.42
+      risk_sentiment: 0.26
+      yields: 0.20
+      nas100: 0.12
+    AUDJPY:
+      fx_spread: 0.42
+      risk_sentiment: 0.26
+      yields: 0.20
+      nas100: 0.12
+    NZDJPY:
+      fx_spread: 0.42
+      risk_sentiment: 0.26
+      yields: 0.20
+      nas100: 0.12
+    AUDNZD:
+      fx_spread: 0.58
+      risk_sentiment: 0.24
+      usoil: 0.10
+      dxy: 0.08
+
+event_playbooks:
+  enabled: true
+  playbook_map:
+    central_bank: "wait_then_retest"
+    inflation: "wait_then_retest"
+    labor: "wait_then_retest"
+    growth: "wait_then_retest"
+    monetary_policy: "wait_then_retest"
+    energy_supply: "breakout"
+    commodity_supply: "breakout"
+    commodity_metals: "breakout"
+    crypto_market: "swing_hold"
+    crypto_regulatory: "swing_hold"
+    equity_earnings: "breakout"
+    risk_sentiment: "risk_on_follow"
+    geopolitical: "fade"
+    geopolitics: "fade"
+    general_macro: "fade"
+
+aggression:
+  profile: "BOUNDED_AGGRO"
+  funded_profile: "FUNDED_AGGRO"
+  soft_trade_budgets_enabled: true
+  lane_multiplier: 1.75
+  funded_lane_multiplier: 1.95
+  hot_lane_concurrency_bonus: 8
+  same_lane_loss_caution_streak: 3
+  low_equity_safety_enabled: true
+  low_equity_max_equity: 300
+  low_equity_risk_floor_pct: 0.01
+  low_equity_risk_ceiling_pct: 0.02
+  low_equity_monte_carlo_floor: 0.85
+  low_equity_spread_atr_cap: 1.25
+
+shadow_promotion:
+  enabled: true
+  variants_per_active_lane: 50
+  variants_per_hot_lane: 64
+  promotion_threshold: 0.64
+
+execution_memory:
+  enabled: true
+  minute_of_day_enabled: true
+  prefer_clean_fill_windows: true
+
+self_heal:
+  enabled: true
+  emergency_review_enabled: true
+  retrain_interval_hours: 4
+  undertrade_trigger_trades_per_day: 300
+  downshift_minutes: 30
+  ramp_recovery_minutes: 60
+
+exits:
+  initial_sl_atr: 1.1
+  initial_tp_r: 1.4
+  min_tp_r: 1.5
+  max_tp_r: 2.5
+  allow_partial_closes: false
+  break_even_trigger_r: 0.7
+  break_even_buffer_r: 0.05
+  partial_close_r: 1.0
+  partial_close_fraction: 0.0
+  partial_close_r2: 2.0
+  partial_close_fraction2: 0.0
+  trail_activation_r: 1.0
+  trail_atr: 1.0
+  basket_take_profit_r: 3.0
+  time_stop_hours: 4
+
+grid:
+  enabled: false
+  max_levels: 3
+  spacing_atr_multiple: 1.0
+  max_total_risk_multiple: 1.5
+
+backtest:
+  default_spread_points: 25
+  default_slippage_points: 5
+  commission_per_lot: 7.0
+  default_latency_ms: 250
+  strict_plausibility: true
+  max_plausible_win_rate: 0.85
+  min_trades_for_plausibility: 200
+  monte_carlo_runs: 1000
+  train_ratio: 0.6
+  validation_ratio: 0.2
+  test_ratio: 0.2
+
+monitoring:
+  print_dashboard: true
+  debug: false
+  alert_on_three_losses: true
+  alert_on_connection_loss_seconds: 300
+  alert_log_file: "data/alerts.log"
+
+logging:
+  rotate_max_bytes: 10485760
+  rotate_backup_count: 7
+
+dashboard:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8000
+  public_enabled: true
+  allow_public_health: false
+  bind_host: "0.0.0.0"
+  bind_port: 8000
+  password: "leobons4254"
+  session_secret: ""
+  session_timeout_minutes: 240
+  read_only: true
+  allowed_ips: []
+  mobile_refresh_seconds: 8
+  desktop_refresh_seconds: 5
+
+telegram:
+  enabled: true
+  bot_username: "Nexus_vantage_trader_bot"
+  token_env: "TELEGRAM_BOT_TOKEN"
+  owner_chat_id_env: "TELEGRAM_CHAT_ID"
+  webhook_secret_env: "TELEGRAM_WEBHOOK_SECRET"
+  parse_mode: "HTML"
+  ai_enabled: true
+  allow_controls: true
+  test_message_on_startup: false
+  confirmation_ttl_seconds: 300
+
+execution:
+  startup_revalidate: true
+  startup_ttl_seconds: 120
+  startup_warmup_seconds: 0
+
+bridge:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8000
+  auth_token: ""
+  poll_ttl_seconds: 90
+  magic_number: 20260304
+  max_slippage_points: 50
+  queue_db: "data/bridge_actions.sqlite"
+  trades_dataset: "data/trades.csv"
+  online_model_path: "models/online_model.pkl"
+  symbol_rules_file: "config/symbol_rules.yaml"
+  orchestrator:
+    dry_run_pull: false
+    allow_redelivery: false
+    lease_seconds: 35
+    max_actions_per_poll: 128
+    max_actions_per_pull: 128
+    xau_grid_burst_actions_per_pull: 128
+    open_lock_seconds: 90
+    delivery_timeout_retry_limit: 3
+    delivery_timeout_requeue_grace_seconds: 20
+    max_open_positions_per_symbol: 32
+    max_total_open_positions: 120
+    max_new_trades_per_hour: 960
+    queue_cap_per_symbol: 320
+    open_enqueue_cooldown_seconds: 1
+    cooldown_seconds_after_delivery: 0
+    delivery_cooldown_seconds: 0
+    throughput_density_ema_window: 24
+    throughput_density_loosen_pct: 0.34
+    equity_momentum_hot_expectancy_r: 1.0
+    equity_momentum_cold_expectancy_r: 0.6
+    equity_momentum_hot_b_tier_loosen_pct: 0.15
+    equity_momentum_cold_b_tier_tighten_pct: 0.10
+    equity_momentum_hot_a_plus_size_boost: 0.10
+    maintenance_retrain_interval_hours: 4
+    maintenance_retrain_min_spacing_seconds: 60
+    weekend_btc_refresh_closed_trades: 100
+    weekly_news_rundown_file: "data/weekly_news_rundown.json"
+    weekly_news_priority_confidence: 0.65
+    monday_news_prep_delay_minutes: 10
+    streak_win_rr_threshold: 2
+    streak_loss_rr_threshold: 2
+    xau_grid_win_streak_threshold: 3
+    xau_grid_loss_streak_threshold: 4
+    pair_strategy_loss_streak_threshold: 3
+    pair_strategy_loss_cooldown_minutes: 12
+    pair_strategy_loss_r_threshold: 5.5
+    pair_strategy_loss_usd_threshold: 15.0
+    candidate_verification_log_file: "data/candidate_verification.log"
+    replay_snapshot_file: "data/replay_snapshot.json"
+    xau_prime_session_snapshot_file: "data/frozen_pair_pass2_window_a.json"
+    max_daily_loss_pct: 0.12
+    max_daily_dd_pct: 0.12
+    bootstrap_drawdown_guard_pct: 0.20
+    max_symbol_risk_pct: 0.10
+    base_risk_pct: 0.01
+    min_risk_pct: 0.01
+    max_risk_pct: 0.025
+    min_budget_usd: 0.5
+    max_budget_usd: 10.0
+    min_probability: 0.54
+    min_expected_value_r: 0.25
+    min_confluence_score: 0.32
+    no_trade_boost_after_minutes: 4
+    no_trade_boost_step_pct: 0.005
+    no_trade_boost_interval_minutes: 5
+    no_trade_boost_max_pct: 0.04
+    xau_grid_cycle_risk_pct: 0.025
+    xau_grid_step_points: 35.0
+    xau_grid_max_legs: 8
+    xau_grid_density_target_10m: 240
+    xau_grid_density_min_10m: 90
+    xau_grid_max_entries_per_symbol_loop: 96
+    xau_grid_requires_m5: false
+    xau_grid_allowed_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+    xau_grid_min_probability_london: 0.50
+    xau_grid_min_confluence_london: 2.65
+    xau_grid_allow_neutral_rsi: true
+    xau_grid_new_cycle_soft_allow: true
+    xau_grid_probe_leg_enabled: true
+    xau_grid_probe_leg_risk_multiplier: 0.46
+    xau_grid_time_stop_minutes: 10
+    xau_grid_breakeven_if_no_progress_minutes: 7
+    candidate_pending_timeout_seconds: 150
+    queued_signal_fair_ttl_seconds: 180
+    stale_idea_rejects_window_minutes: 15
+    stale_idea_rejects_threshold: 3
+    stale_idea_archive_threshold: 5
+    min_lot_by_symbol:
+      XAUUSD: 0.01
+      XAGUSD: 0.01
+      BTCUSD: 0.01
+      DOGUSD: 0.01
+      TRUMPUSD: 0.01
+      EURUSD: 0.01
+      GBPUSD: 0.01
+      USDJPY: 0.01
+      NAS100: 0.01
+      USOIL: 0.01
+      AAPL: 0.01
+      NVIDIA: 0.01
+    attached_tf_fallback_enabled: true
+    preferred_execution_tf_by_symbol:
+      XAUUSD: M3
+      XAGUSD: M15
+      BTCUSD: M3
+      DOGUSD: M15
+      TRUMPUSD: M15
+      EURUSD: M15
+      GBPUSD: M15
+      USDJPY: M3
+      NAS100: M3
+      USOIL: M15
+      AAPL: M15
+      NVIDIA: M15
+    internal_analysis_tfs_by_symbol:
+      XAUUSD: [M1, M3, M5, M15, H1, H4, D1, W1]
+      XAGUSD: [M5, M15, H1, H4, D1, W1]
+      BTCUSD: [M1, M3, M5, M15, H1, H4, D1, W1]
+      DOGUSD: [M1, M5, M15, H1, H4, D1, W1]
+      TRUMPUSD: [M1, M5, M15, H1, H4, D1, W1]
+      EURUSD: [M5, M15, H1, H4, D1, W1]
+      GBPUSD: [M5, M15, H1, H4, D1, W1]
+      USDJPY: [M1, M3, M5, M15, H1, H4, D1, W1]
+      NAS100: [M1, M3, M5, M15, H1, H4, D1, W1]
+      USOIL: [M5, M15, H1, H4, D1, W1]
+      AAPL: [M5, M15, H1, H4, D1, W1]
+      NVIDIA: [M5, M15, H1, H4, D1, W1]
+    symbol_timeframe_map:
+      XAUUSD:
+        accepted: [M15, M5, M3, M1]
+        execution: M3
+        internal: [M1, M3, M5, M15]
+      BTCUSD:
+        accepted: [M15, M5, M3, M1]
+        execution: M3
+        internal: [M1, M3, M5, M15]
+      EURUSD:
+        accepted: [M15, M5]
+        execution: M15
+        internal: [M5, M15]
+      GBPUSD:
+        accepted: [M15, M5]
+        execution: M15
+        internal: [M5, M15]
+      USDJPY:
+        accepted: [M15, M5, M3, M1]
+        execution: M3
+        internal: [M1, M3, M5, M15]
+      NAS100:
+        accepted: [M15, M5, M3, M1]
+        execution: M3
+        internal: [M1, M3, M5, M15]
+      USOIL:
+        accepted: [M15, M5]
+        execution: M15
+        internal: [M5, M15]
+    safety_buffer_points: 5
+    max_spread_points_grid: 60
+    max_spread_points_other: 50
+    max_spread_to_stop_ratio_grid: 0.32
+    max_spread_to_stop_ratio_other: 0.30
+    max_spread_to_stop_ratio_scalp: 0.24
+    scalp_delivery_reanchor_drift_stop_ratio: 0.03
+    scalp_delivery_block_drift_stop_ratio: 0.07
+    scalp_delivery_reanchor_spread_mult: 0.75
+    scalp_delivery_block_spread_mult: 1.45
+    scalp_delivery_spread_to_target_ratio_cap: 0.30
+    spread_to_stop_min_trigger_points: 8
+    spread_atr_guard_multiplier: 1.6
+    spread_session_ratio_cap_prime: 1.35
+    spread_session_ratio_cap_asia: 2.5
+    spread_session_ratio_cap_default: 1.6
+    spread_high_ratio_reduce_threshold: 2.0
+    spread_high_ratio_reduce_multiplier: 0.5
+    spread_extreme_ratio_skip_threshold: 2.5
+    adaptive_thresholds:
+      min_probability_relax_max: 0.10
+      min_ev_relax_max: 0.20
+    ai_budget:
+      max_calls_per_symbol_per_hour: 20
+      max_calls_total_per_minute: 30
+      entry_cache_ttl_seconds: 900
+      management_cache_ttl_seconds: 300
+    management:
+      enable_post_entry_manager: true
+      enable_stall_exit: true
+      enable_adaptive_tp: true
+      enable_dynamic_trail: true
+      milestone_r_step: 0.5
+      min_interval_seconds: 30
+      default_time_stop_minutes: 120
+    smc:
+      enabled: true
+      min_score: 0.58
+    omega:
+      enabled: true
+      model_path: "models/omega_regime.onnx"
+      news_flatten_seconds: 30
+      volatile_entry_pause_seconds: 30
+      volatile_size_multiplier: 0.5
+    kelly:
+      scale_fraction: 0.25
+      dd_attenuation_power: 2.0
+      weight: 0.4
+      hard_cap_pct: 0.02
+    risk_tiers:
+      scalp:
+        LOW: 0.0025
+        NORMAL: 0.0040
+        HIGH: 0.0050
+      daytrade:
+        LOW: 0.0050
+        NORMAL: 0.0075
+        HIGH: 0.0100
+    reality_sync:
+      stale_seconds: 120
+      low_confidence_after_seconds: 300
+      restrict_new_exposure_on_low_confidence: true
+      drift_open_count_threshold: 1
+    xau_grid_recycle:
+      cooldown_seconds: 0
+      micro_tp_usd: 0.3
+    spread_session_thresholds:
+      TOKYO: {grid: 52, other: 40}
+      LONDON: {grid: 62, other: 46}
+      OVERLAP: {grid: 66, other: 48}
+      NEW_YORK: {grid: 60, other: 46}
+      SYDNEY: {grid: 50, other: 38}
+    undertrading_governor:
+      enabled: true
+      target_trades_per_hour_xau_grid: 24.0
+      target_trades_per_hour_other: 12.0
+      adjustment_interval_seconds: 240
+      min_interval_minutes: 8
+      max_changes_per_day: 8
+      spread_loosen_step_pct: 0.07
+      max_spread_loosen_pct: 0.28
+      min_confluence_relax_step: 0.025
+      max_confluence_relax: 0.14
+      performance_window_trades: 20
+      performance_win_rate_floor: 0.45
+      performance_loosen_pct: 0.10
+      no_trade_disable_filters_hours: 3
+      allowed_params:
+        - confluence_floor
+        - max_spread_points
+        - orb_retest_strictness
+      bounds:
+        confluence_floor: {min: 0.50, max: 0.80}
+        max_spread_points: {min: 20, max: 80}
+        orb_retest_strictness: {min: 0.0, max: 1.0}
+    shadow_system:
+      enabled: true
+      ranking_bonus_cap: 0.08
+      no_history_candidate_threshold: 3
+      no_history_scan_threshold: 20
+      no_history_spread_loosen_pct: 0.12
+      no_history_confluence_relax: 0.06
+      no_history_probability_relax: 0.06
+      latency_edge_threshold_ms: 50
+    btc_policy:
+      trade_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+      weekend_routine_sessions: ["SYDNEY", "TOKYO", "LONDON", "OVERLAP", "NEW_YORK"]
+      allowed_start_hour_utc: 0
+      allowed_end_hour_utc: 24
+      spread_cap_price: 25.0
+      min_ai_confidence: 0.50
+      frequency_lock_hours: 0
+      max_trades_per_day: 0
+      high_conf_override_probability: 0.90
+      high_conf_override_confluence: 0.88
+      volatility_pause_move_pct_30m: 0.015
+      volatility_pause_hours: 2
+      bootstrap_min_equity_for_routine_trading: 45.0
+      loss_direction_guard_hours: 4
+      max_losses_before_cooldown: 3
+      loss_cooldown_hours: 1
+    news_armed_mode:
+      enabled: true
+      window_minutes: 20
+      min_probability: 0.84
+      min_confluence: 0.80
+      spread_mult: 1.0
+      volatility_cap: 1.25
+    news_mode: "ALLOW_HIGH_CONF"  # SAFE | ALLOW_HIGH_CONF | OFF
+    news_high_conf_probability: 0.82
+    news_high_conf_confluence: 0.75
+    news_high_conf_spread_mult: 1.1
+    ranking_w_probability: 0.50
+    ranking_w_ev: 0.20
+    ranking_w_confluence: 0.20
+    ranking_w_risk_cost: 0.05
+    ranking_w_spread_penalty: 0.05
+    allow_open_without_stops_fallback: true
+    disable_live_partial_exits: true
+    modify_backlog_limit: 1
+    modify_backlog_force_close_profit_r: 0.12
+    modify_backlog_force_close_capture_gap_r: 0.35
+    rule_change:
+      enabled: true
+      min_samples: 50
+      min_grid_cycles: 10
+      cooldown_hours: 24
+      shadow_trades_required: 25
+      max_delta_pct: 0.20
+      min_profit_factor_gain: 0.05
+      min_expectancy_gain: 0.02
+      allowed_params:
+        - min_confluence_score
+        - xau_grid_step_points
+        - xau_grid_cycle_risk_pct
+        - xau_recycle_cooldown_seconds
+      locked_params:
+        - xau_grid_max_legs
+        - max_total_open_positions
+        - max_open_positions_per_symbol
+        - max_daily_loss_pct
+        - max_daily_dd_pct
+    strategy_optimizer:
+      enabled: true
+      trade_history_path: "data/trade_history.json"
+      metrics_path: "data/strategy_metrics.json"
+      min_trades_per_strategy: 50
+      lookback_days: 90
+      low_win_rate_threshold: 0.45
+      high_win_rate_threshold: 0.60
+      adjustment_step_pct: 0.10
+      min_adjustment_multiplier: 0.75
+      max_adjustment_multiplier: 1.25
+      cooldown_minutes: 30
+    symbol_auto_discovery:
+      min_samples: 120
+      max_spread_points: 45
+      min_pass_score: 0.55
+      min_observation_days: 7
+      state_file: "data/symbol_training_state.json"
+
+confluence:
+  thresholds:
+    XAUUSD_M5_GRID: 0.55
+    XAUUSD_NON_GRID: 0.68
+    FX_MULTI: 0.72
+    BTC_MULTI: 0.70
+
+scaling:
+  equity_tiers:
+    - {equity: 50, multiplier: 1.0}
+    - {equity: 100, multiplier: 1.3}
+    - {equity: 200, multiplier: 1.7}
+    - {equity: 500, multiplier: 2.2}
+    - {equity: 1000, multiplier: 3.0}
+    - {equity: 1500, multiplier: 3.4}
+    - {equity: 5000, multiplier: 4.2}
+    - {equity: 10000, multiplier: 5.0}
+    - {equity: 25000, multiplier: 6.0}
+    - {equity: 100000, multiplier: 7.5}
+    - {equity: 250000, multiplier: 8.5}
+    - {equity: 500000, multiplier: 9.25}
+    - {equity: 1000000, multiplier: 10.0}
+  risk_curve:
+    base_multiplier: 1.0
+    cap_multiplier: 3.0
+
+data:
+  trade_db: "data/trades_db.sqlite"
+  candles_cache_dir: "data/candles_cache"
+  regime_history_file: "data/regime_history.json"
+  news_cache_file: "data/news_cache.json"
+
+models:
+  regime_classifier: "models/regime_classifier.pkl"
+  trade_scorer: "models/trade_scorer.pkl"
+  trade_value_model: "models/trade_value_model.pkl"
+  risk_modulator: "models/risk_modulator.pkl"
+  feature_schema: "models/feature_schema.json"
+  metadata: "models/model_metadata.json"

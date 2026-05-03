@@ -1,0 +1,1817 @@
+{"timestamp": "2026-03-16T03:40:36.794359+00:00", "level": "INFO", "logger": "apex", "message": "sydney_day_rollover_detected", "previous_trading_day_key": "2026-03-15", "new_trading_day_key": "2026-03-16", "reset_closed_trades_today": true, "reset_daily_realized_pnl": true, "reset_day_start_equity": 100.0, "reset_day_high_equity": 100.0, "reset_basis_pending_live_equity": false, "timezone_used": "Australia/Sydney", "reset_triggered_at": "2026-03-16T03:40:36.786417+00:00", "reset_reason": "sydney_day_rollover", "day_reset_complete": true}
+{
+  "approved_reason_counts": {
+    "combined_strategy_score": 22,
+    "throughput_recovery_b": 11
+  },
+  "by_pair": [
+    {
+      "avg_duration_minutes": 11.515151515151516,
+      "avg_loss_r": 0.8777331598028908,
+      "avg_mae_r": -0.9345518166252614,
+      "avg_mfe_r": 0.8622986956654513,
+      "avg_r": -0.28926627702801766,
+      "avg_win_r": 0.7405507678280104,
+      "capture_efficiency": 0.2339273411214304,
+      "expectancy_r": -0.28926627702801766,
+      "profit_factor": 0.48211903880368584,
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 23,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 4,
+          "reason": "TP_HIT"
+        },
+        {
+          "count": 3,
+          "reason": "BASKET_CLOSE"
+        },
+        {
+          "count": 3,
+          "reason": "END_OF_TEST"
+        }
+      ],
+      "trades": 33.0,
+      "win_rate": 0.36363636363636365,
+      "winner_loss_ratio": 0.8437083179064502
+    }
+  ],
+  "by_pair_rr": [
+    {
+      "avg_loss_r": 0.8777331598028908,
+      "avg_mae_r": -0.9345518166252614,
+      "avg_mfe_r": 0.8622986956654513,
+      "avg_win_r": 0.7405507678280104,
+      "capture_efficiency": 0.2339273411214304,
+      "expectancy_r": -0.28926627702801766,
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 23,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 4,
+          "reason": "TP_HIT"
+        },
+        {
+          "count": 3,
+          "reason": "BASKET_CLOSE"
+        },
+        {
+          "count": 3,
+          "reason": "END_OF_TEST"
+        }
+      ],
+      "trades": 33.0,
+      "win_rate": 0.36363636363636365,
+      "winner_loss_ratio": 0.8437083179064502
+    }
+  ],
+  "by_pair_strategy": [
+    {
+      "avg_duration_minutes": 11.11111111111111,
+      "avg_loss_r": 0.8235606257306912,
+      "avg_mae_r": -1.360494008074876,
+      "avg_mfe_r": 1.2153741699261917,
+      "avg_r": -0.3616206605957275,
+      "avg_win_r": 0.5622592696741998,
+      "capture_efficiency": 0.04942859034701922,
+      "expectancy_r": -0.3616206605957275,
+      "profit_factor": 0.34135876103556073,
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 7,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "BASKET_CLOSE"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 9.0,
+      "win_rate": 0.3333333333333333,
+      "winner_loss_ratio": 0.6827175220711215
+    },
+    {
+      "avg_duration_minutes": 11.956521739130435,
+      "avg_loss_r": 0.8994021734317705,
+      "avg_mae_r": -0.80488659366088,
+      "avg_mfe_r": 0.6614726968796512,
+      "avg_r": -0.349047622442162,
+      "avg_win_r": 0.6828671606633543,
+      "capture_efficiency": 0.2853562141398252,
+      "expectancy_r": -0.349047622442162,
+      "profit_factor": 0.4049309972543488,
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 16,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 3,
+          "reason": "END_OF_TEST"
+        },
+        {
+          "count": 2,
+          "reason": "BASKET_CLOSE"
+        },
+        {
+          "count": 2,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 23.0,
+      "win_rate": 0.34782608695652173,
+      "winner_loss_ratio": 0.759245619851904
+    }
+  ],
+  "by_pair_strategy_session": [
+    {
+      "avg_duration_minutes": 5.0,
+      "avg_loss_r": 1.2020963150842447,
+      "avg_mae_r": -1.2088042306133397,
+      "avg_mfe_r": 1.6669365949294226,
+      "avg_r": -0.5009129739016066,
+      "avg_win_r": 1.6026370496463076,
+      "capture_efficiency": 0.09511609965191559,
+      "expectancy_r": -0.5009129739016066,
+      "profit_factor": 0.4444006217959866,
+      "session_name": "SYDNEY",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 3,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 4.0,
+      "win_rate": 0.25,
+      "winner_loss_ratio": 1.3332018653879596
+    },
+    {
+      "avg_duration_minutes": 11.944444444444445,
+      "avg_loss_r": 0.8416591835662158,
+      "avg_mae_r": -0.8115148581318272,
+      "avg_mfe_r": 0.5059966737315387,
+      "avg_r": -0.39528919818665476,
+      "avg_win_r": 0.7652727638002045,
+      "capture_efficiency": 0.2904399004234404,
+      "expectancy_r": -0.39528919818665476,
+      "profit_factor": 0.3497088656925915,
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 13,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 3,
+          "reason": "END_OF_TEST"
+        },
+        {
+          "count": 2,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 18.0,
+      "win_rate": 0.2777777777777778,
+      "winner_loss_ratio": 0.9092430508007381
+    },
+    {
+      "avg_duration_minutes": 16.0,
+      "avg_loss_r": 0.4450249363771375,
+      "avg_mae_r": -1.481845830044105,
+      "avg_mfe_r": 0.8541242299236073,
+      "avg_r": -0.25018680995102416,
+      "avg_win_r": 0.042070379688145865,
+      "capture_efficiency": 0.015162958368346946,
+      "expectancy_r": -0.25018680995102416,
+      "profit_factor": 0.06302325442799189,
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.4,
+      "winner_loss_ratio": 0.09453488164198784
+    },
+    {
+      "avg_duration_minutes": 12.0,
+      "avg_loss_r": 1.274731607557876,
+      "avg_mae_r": -0.7810248415654713,
+      "avg_mfe_r": 1.221186380212856,
+      "avg_r": -0.1825779497619881,
+      "avg_win_r": 0.545524488768604,
+      "capture_efficiency": 0.26502146900536433,
+      "expectancy_r": -0.1825779497619881,
+      "profit_factor": 0.6419286446662881,
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 3,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.6,
+      "winner_loss_ratio": 0.4279524297775254
+    }
+  ],
+  "by_pair_strategy_session_regime": [
+    {
+      "avg_duration_minutes": 5.0,
+      "avg_loss_r": 1.1700608041947713,
+      "avg_mae_r": -1.8243163746004034,
+      "avg_mfe_r": 0.4557113707799449,
+      "avg_r": -1.1700608041947713,
+      "avg_win_r": 0.0,
+      "capture_efficiency": 0.0,
+      "expectancy_r": -1.1700608041947713,
+      "profit_factor": 0.0,
+      "regime_state": "LOW_LIQUIDITY_CHOP",
+      "session_name": "SYDNEY",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 2,
+          "reason": "STOP_HIT"
+        }
+      ],
+      "trades": 2.0,
+      "win_rate": 0.0,
+      "winner_loss_ratio": 0.0
+    },
+    {
+      "avg_duration_minutes": 9.583333333333334,
+      "avg_loss_r": 0.8434087021204503,
+      "avg_mae_r": -0.7245136653314853,
+      "avg_mfe_r": 0.3781472761083163,
+      "avg_r": -0.4700430483275497,
+      "avg_win_r": 0.6500539130511521,
+      "capture_efficiency": 0.31434145281674036,
+      "expectancy_r": -0.4700430483275497,
+      "profit_factor": 0.2569153450028926,
+      "regime_state": "LOW_LIQUIDITY_CHOP",
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 9,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "END_OF_TEST"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 12.0,
+      "win_rate": 0.25,
+      "winner_loss_ratio": 0.7707460350086779
+    },
+    {
+      "avg_duration_minutes": 16.0,
+      "avg_loss_r": 0.4450249363771375,
+      "avg_mae_r": -1.481845830044105,
+      "avg_mfe_r": 0.8541242299236073,
+      "avg_r": -0.25018680995102416,
+      "avg_win_r": 0.042070379688145865,
+      "capture_efficiency": 0.015162958368346946,
+      "expectancy_r": -0.25018680995102416,
+      "profit_factor": 0.06302325442799189,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.4,
+      "winner_loss_ratio": 0.09453488164198784
+    },
+    {
+      "avg_duration_minutes": 16.666666666666668,
+      "avg_loss_r": 0.8377227668191887,
+      "avg_mae_r": -0.9855172437325109,
+      "avg_mfe_r": 0.7616954689779835,
+      "avg_r": -0.24578149790486478,
+      "avg_win_r": 0.938101039923783,
+      "capture_efficiency": 0.24263679563684054,
+      "expectancy_r": -0.24578149790486478,
+      "profit_factor": 0.5599113913817384,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "END_OF_TEST"
+        }
+      ],
+      "trades": 6.0,
+      "win_rate": 0.3333333333333333,
+      "winner_loss_ratio": 1.1198227827634768
+    },
+    {
+      "avg_duration_minutes": 12.0,
+      "avg_loss_r": 1.274731607557876,
+      "avg_mae_r": -0.7810248415654713,
+      "avg_mfe_r": 1.221186380212856,
+      "avg_r": -0.1825779497619881,
+      "avg_win_r": 0.545524488768604,
+      "capture_efficiency": 0.26502146900536433,
+      "expectancy_r": -0.1825779497619881,
+      "profit_factor": 0.6419286446662881,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 3,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.6,
+      "winner_loss_ratio": 0.4279524297775254
+    },
+    {
+      "avg_duration_minutes": 5.0,
+      "avg_loss_r": 1.2661673368631914,
+      "avg_mae_r": -0.5932920866262759,
+      "avg_mfe_r": 2.8781618190789002,
+      "avg_r": 0.1682348563915581,
+      "avg_win_r": 1.6026370496463076,
+      "capture_efficiency": 0.14267414947787338,
+      "expectancy_r": 0.1682348563915581,
+      "profit_factor": 1.2657387400441775,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "SYDNEY",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 1,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 2.0,
+      "win_rate": 0.5,
+      "winner_loss_ratio": 1.2657387400441775
+    }
+  ],
+  "by_symbol": {
+    "BTCUSD": {
+      "events": {
+        "basket_closes": 1,
+        "entries": 33,
+        "entry_rejected_fill": 0,
+        "partials_tp1": 9,
+        "partials_tp2": 1,
+        "scale_in_added": 0,
+        "signal_flip_closes": 0,
+        "sl_to_be": 10,
+        "trail_updates": 1
+      },
+      "expectancy_r": -0.28926627702801766,
+      "max_consecutive_losses": 7,
+      "max_drawdown_r": 10.855861622501443,
+      "net_r": -9.545787141924583,
+      "profit_factor": 0.48211903880368584,
+      "trade_count": 33,
+      "win_rate": 0.36363636363636365
+    },
+    "XAUUSD": {
+      "skipped": "weekend_mode_only"
+    }
+  },
+  "exact_blocker_buckets": [
+    {
+      "avg_duration_minutes": 5.0,
+      "avg_loss_r": 1.1700608041947713,
+      "avg_mae_r": -1.8243163746004034,
+      "avg_mfe_r": 0.4557113707799449,
+      "avg_r": -1.1700608041947713,
+      "avg_win_r": 0.0,
+      "capture_efficiency": 0.0,
+      "expectancy_r": -1.1700608041947713,
+      "profit_factor": 0.0,
+      "regime_state": "LOW_LIQUIDITY_CHOP",
+      "session_name": "SYDNEY",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 2,
+          "reason": "STOP_HIT"
+        }
+      ],
+      "trades": 2.0,
+      "win_rate": 0.0,
+      "winner_loss_ratio": 0.0
+    },
+    {
+      "avg_duration_minutes": 9.583333333333334,
+      "avg_loss_r": 0.8434087021204503,
+      "avg_mae_r": -0.7245136653314853,
+      "avg_mfe_r": 0.3781472761083163,
+      "avg_r": -0.4700430483275497,
+      "avg_win_r": 0.6500539130511521,
+      "capture_efficiency": 0.31434145281674036,
+      "expectancy_r": -0.4700430483275497,
+      "profit_factor": 0.2569153450028926,
+      "regime_state": "LOW_LIQUIDITY_CHOP",
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 9,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "END_OF_TEST"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 12.0,
+      "win_rate": 0.25,
+      "winner_loss_ratio": 0.7707460350086779
+    },
+    {
+      "avg_duration_minutes": 16.0,
+      "avg_loss_r": 0.4450249363771375,
+      "avg_mae_r": -1.481845830044105,
+      "avg_mfe_r": 0.8541242299236073,
+      "avg_r": -0.25018680995102416,
+      "avg_win_r": 0.042070379688145865,
+      "capture_efficiency": 0.015162958368346946,
+      "expectancy_r": -0.25018680995102416,
+      "profit_factor": 0.06302325442799189,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.4,
+      "winner_loss_ratio": 0.09453488164198784
+    },
+    {
+      "avg_duration_minutes": 16.666666666666668,
+      "avg_loss_r": 0.8377227668191887,
+      "avg_mae_r": -0.9855172437325109,
+      "avg_mfe_r": 0.7616954689779835,
+      "avg_r": -0.24578149790486478,
+      "avg_win_r": 0.938101039923783,
+      "capture_efficiency": 0.24263679563684054,
+      "expectancy_r": -0.24578149790486478,
+      "profit_factor": 0.5599113913817384,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "END_OF_TEST"
+        }
+      ],
+      "trades": 6.0,
+      "win_rate": 0.3333333333333333,
+      "winner_loss_ratio": 1.1198227827634768
+    },
+    {
+      "avg_duration_minutes": 12.0,
+      "avg_loss_r": 1.274731607557876,
+      "avg_mae_r": -0.7810248415654713,
+      "avg_mfe_r": 1.221186380212856,
+      "avg_r": -0.1825779497619881,
+      "avg_win_r": 0.545524488768604,
+      "capture_efficiency": 0.26502146900536433,
+      "expectancy_r": -0.1825779497619881,
+      "profit_factor": 0.6419286446662881,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 3,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.6,
+      "winner_loss_ratio": 0.4279524297775254
+    }
+  ],
+  "frozen_replay_overall": {
+    "avg_duration_minutes": 11.515151515151516,
+    "avg_loss_r": 0.8777331598028908,
+    "avg_mae_r": -0.9345518166252614,
+    "avg_mfe_r": 0.8622986956654513,
+    "avg_r": -0.28926627702801766,
+    "avg_win_r": 0.7405507678280104,
+    "capture_efficiency": 0.2339273411214304,
+    "expectancy_r": -0.28926627702801766,
+    "profit_factor": 0.48211903880368584,
+    "top_exit_reasons": [
+      {
+        "count": 23,
+        "reason": "STOP_HIT"
+      },
+      {
+        "count": 4,
+        "reason": "TP_HIT"
+      },
+      {
+        "count": 3,
+        "reason": "BASKET_CLOSE"
+      },
+      {
+        "count": 3,
+        "reason": "END_OF_TEST"
+      }
+    ],
+    "trades": 33.0,
+    "win_rate": 0.36363636363636365,
+    "winner_loss_ratio": 0.8437083179064502
+  },
+  "moving_replay_context": {
+    "closed_trade_sample_size": 39,
+    "trading_day_key": "2026-03-16"
+  },
+  "moving_replay_overall": {
+    "avg_duration_minutes": 11.363636363636363,
+    "avg_loss_r": 0.8783931782943742,
+    "avg_mae_r": -0.9894989502138539,
+    "avg_mfe_r": 0.8319720951328033,
+    "avg_r": -0.290490160727699,
+    "avg_win_r": 0.7383401200139826,
+    "capture_efficiency": 0.23493760995713578,
+    "expectancy_r": -0.290490160727699,
+    "profit_factor": 0.48031866643959364,
+    "top_exit_reasons": [
+      {
+        "count": 23,
+        "reason": "STOP_HIT"
+      },
+      {
+        "count": 4,
+        "reason": "TP_HIT"
+      },
+      {
+        "count": 3,
+        "reason": "BASKET_CLOSE"
+      },
+      {
+        "count": 3,
+        "reason": "END_OF_TEST"
+      }
+    ],
+    "trades": 33.0,
+    "win_rate": 0.36363636363636365,
+    "winner_loss_ratio": 0.840557666269289
+  },
+  "overall": {
+    "avg_duration_minutes": 11.515151515151516,
+    "avg_loss_r": 0.8777331598028908,
+    "avg_mae_r": -0.9345518166252614,
+    "avg_mfe_r": 0.8622986956654513,
+    "avg_r": -0.28926627702801766,
+    "avg_win_r": 0.7405507678280104,
+    "capture_efficiency": 0.2339273411214304,
+    "expectancy_r": -0.28926627702801766,
+    "profit_factor": 0.48211903880368584,
+    "top_exit_reasons": [
+      {
+        "count": 23,
+        "reason": "STOP_HIT"
+      },
+      {
+        "count": 4,
+        "reason": "TP_HIT"
+      },
+      {
+        "count": 3,
+        "reason": "BASKET_CLOSE"
+      },
+      {
+        "count": 3,
+        "reason": "END_OF_TEST"
+      }
+    ],
+    "trades": 33.0,
+    "win_rate": 0.36363636363636365,
+    "winner_loss_ratio": 0.8437083179064502
+  },
+  "preset": "realistic",
+  "quality_tier_counts": {
+    "B": 11,
+    "C": 22
+  },
+  "recycled_trade_count": 0,
+  "rr_distribution": {
+    "1.5-1.8": 22,
+    "1.7-2.0": 1,
+    "2.2-2.8": 10
+  },
+  "snapshot": {
+    "baseline_stats": {
+      "absolute_drawdown_pct": 0.07658610271903324,
+      "avg_loss_r": 1.0,
+      "avg_win_r": 1.0,
+      "closed_trades_total": 38,
+      "consecutive_losses": 0,
+      "cooldown_trades_remaining": 0,
+      "daily_dd_pct_live": 0.0,
+      "daily_pnl_pct": 0.0,
+      "daily_realized_pnl": 0.0,
+      "day_bucket_source": "close_time_sydney",
+      "day_high_equity": 100.0,
+      "day_high_equity_source": "reset:current_equity",
+      "day_start_equity": 100.0,
+      "day_start_equity_source": "reset:current_equity",
+      "previous_trading_day_key": "",
+      "reset_reason": "",
+      "reset_triggered_at": "",
+      "rolling_drawdown_pct": 0.15470679012345684,
+      "soft_dd_trade_count": 0,
+      "timezone_used": "Australia/Sydney",
+      "today_closed_trade_count": 0,
+      "today_closed_trade_details": [],
+      "today_closed_trade_ids": [],
+      "today_closed_trade_times_raw": [],
+      "today_closed_trade_times_sydney": [],
+      "trades_today": 0,
+      "trading_day_key": "2026-03-15",
+      "win_rate": 0.23684210526315788,
+      "winning_streak": 2
+    },
+    "closed_trade_sample_size": 38,
+    "path": "/Users/leobons/Library/Mobile Documents/com~apple~CloudDocs/Kimi_Agent_Set & Forget Trade Bot/apex_bot/data/replay_snapshot.json",
+    "snapshot_timestamp": "2026-03-14T22:02:13.437170+00:00",
+    "trading_day_key": "2026-03-15"
+  },
+  "symbols": [
+    "XAUUSD",
+    "BTCUSD"
+  ],
+  "top_20_approved_reasons": [
+    {
+      "count": 22,
+      "reason": "combined_strategy_score"
+    },
+    {
+      "count": 11,
+      "reason": "throughput_recovery_b"
+    }
+  ],
+  "top_20_approved_reasons_with_ancestry": [
+    {
+      "btc_weekend_mode": true,
+      "correlation_penalty": false,
+      "count": 22,
+      "reason": "combined_strategy_score",
+      "recycle_session": false,
+      "streak_adjust_mode": "NEUTRAL",
+      "transition_momentum": false,
+      "velocity_decay": false
+    },
+    {
+      "btc_weekend_mode": true,
+      "correlation_penalty": false,
+      "count": 11,
+      "reason": "throughput_recovery_b",
+      "recycle_session": false,
+      "streak_adjust_mode": "NEUTRAL",
+      "transition_momentum": false,
+      "velocity_decay": false
+    }
+  ],
+  "velocity_decay_counts": {
+    "inactive": 33
+  },
+  "verified_trade_count": 33,
+  "weekend_btc_slice": {
+    "approved_reason_counts": {
+      "combined_strategy_score": 22,
+      "throughput_recovery_b": 11
+    },
+    "by_pair": [
+      {
+        "avg_duration_minutes": 11.515151515151516,
+        "avg_loss_r": 0.8777331598028908,
+        "avg_mae_r": -0.9345518166252614,
+        "avg_mfe_r": 0.8622986956654513,
+        "avg_r": -0.28926627702801766,
+        "avg_win_r": 0.7405507678280104,
+        "capture_efficiency": 0.2339273411214304,
+        "expectancy_r": -0.28926627702801766,
+        "profit_factor": 0.48211903880368584,
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 23,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 4,
+            "reason": "TP_HIT"
+          },
+          {
+            "count": 3,
+            "reason": "BASKET_CLOSE"
+          },
+          {
+            "count": 3,
+            "reason": "END_OF_TEST"
+          }
+        ],
+        "trades": 33.0,
+        "win_rate": 0.36363636363636365,
+        "winner_loss_ratio": 0.8437083179064502
+      }
+    ],
+    "by_pair_rr": [
+      {
+        "avg_loss_r": 0.8777331598028908,
+        "avg_mae_r": -0.9345518166252614,
+        "avg_mfe_r": 0.8622986956654513,
+        "avg_win_r": 0.7405507678280104,
+        "capture_efficiency": 0.2339273411214304,
+        "expectancy_r": -0.28926627702801766,
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 23,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 4,
+            "reason": "TP_HIT"
+          },
+          {
+            "count": 3,
+            "reason": "BASKET_CLOSE"
+          },
+          {
+            "count": 3,
+            "reason": "END_OF_TEST"
+          }
+        ],
+        "trades": 33.0,
+        "win_rate": 0.36363636363636365,
+        "winner_loss_ratio": 0.8437083179064502
+      }
+    ],
+    "by_pair_strategy": [
+      {
+        "avg_duration_minutes": 11.11111111111111,
+        "avg_loss_r": 0.8235606257306912,
+        "avg_mae_r": -1.360494008074876,
+        "avg_mfe_r": 1.2153741699261917,
+        "avg_r": -0.3616206605957275,
+        "avg_win_r": 0.5622592696741998,
+        "capture_efficiency": 0.04942859034701922,
+        "expectancy_r": -0.3616206605957275,
+        "profit_factor": 0.34135876103556073,
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 7,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "BASKET_CLOSE"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 9.0,
+        "win_rate": 0.3333333333333333,
+        "winner_loss_ratio": 0.6827175220711215
+      },
+      {
+        "avg_duration_minutes": 11.956521739130435,
+        "avg_loss_r": 0.8994021734317705,
+        "avg_mae_r": -0.80488659366088,
+        "avg_mfe_r": 0.6614726968796512,
+        "avg_r": -0.349047622442162,
+        "avg_win_r": 0.6828671606633543,
+        "capture_efficiency": 0.2853562141398252,
+        "expectancy_r": -0.349047622442162,
+        "profit_factor": 0.4049309972543488,
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 16,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 3,
+            "reason": "END_OF_TEST"
+          },
+          {
+            "count": 2,
+            "reason": "BASKET_CLOSE"
+          },
+          {
+            "count": 2,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 23.0,
+        "win_rate": 0.34782608695652173,
+        "winner_loss_ratio": 0.759245619851904
+      }
+    ],
+    "by_pair_strategy_session": [
+      {
+        "avg_duration_minutes": 5.0,
+        "avg_loss_r": 1.2020963150842447,
+        "avg_mae_r": -1.2088042306133397,
+        "avg_mfe_r": 1.6669365949294226,
+        "avg_r": -0.5009129739016066,
+        "avg_win_r": 1.6026370496463076,
+        "capture_efficiency": 0.09511609965191559,
+        "expectancy_r": -0.5009129739016066,
+        "profit_factor": 0.4444006217959866,
+        "session_name": "SYDNEY",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 3,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 4.0,
+        "win_rate": 0.25,
+        "winner_loss_ratio": 1.3332018653879596
+      },
+      {
+        "avg_duration_minutes": 11.944444444444445,
+        "avg_loss_r": 0.8416591835662158,
+        "avg_mae_r": -0.8115148581318272,
+        "avg_mfe_r": 0.5059966737315387,
+        "avg_r": -0.39528919818665476,
+        "avg_win_r": 0.7652727638002045,
+        "capture_efficiency": 0.2904399004234404,
+        "expectancy_r": -0.39528919818665476,
+        "profit_factor": 0.3497088656925915,
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 13,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 3,
+            "reason": "END_OF_TEST"
+          },
+          {
+            "count": 2,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 18.0,
+        "win_rate": 0.2777777777777778,
+        "winner_loss_ratio": 0.9092430508007381
+      },
+      {
+        "avg_duration_minutes": 16.0,
+        "avg_loss_r": 0.4450249363771375,
+        "avg_mae_r": -1.481845830044105,
+        "avg_mfe_r": 0.8541242299236073,
+        "avg_r": -0.25018680995102416,
+        "avg_win_r": 0.042070379688145865,
+        "capture_efficiency": 0.015162958368346946,
+        "expectancy_r": -0.25018680995102416,
+        "profit_factor": 0.06302325442799189,
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.4,
+        "winner_loss_ratio": 0.09453488164198784
+      },
+      {
+        "avg_duration_minutes": 12.0,
+        "avg_loss_r": 1.274731607557876,
+        "avg_mae_r": -0.7810248415654713,
+        "avg_mfe_r": 1.221186380212856,
+        "avg_r": -0.1825779497619881,
+        "avg_win_r": 0.545524488768604,
+        "capture_efficiency": 0.26502146900536433,
+        "expectancy_r": -0.1825779497619881,
+        "profit_factor": 0.6419286446662881,
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 3,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.6,
+        "winner_loss_ratio": 0.4279524297775254
+      }
+    ],
+    "by_pair_strategy_session_regime": [
+      {
+        "avg_duration_minutes": 5.0,
+        "avg_loss_r": 1.1700608041947713,
+        "avg_mae_r": -1.8243163746004034,
+        "avg_mfe_r": 0.4557113707799449,
+        "avg_r": -1.1700608041947713,
+        "avg_win_r": 0.0,
+        "capture_efficiency": 0.0,
+        "expectancy_r": -1.1700608041947713,
+        "profit_factor": 0.0,
+        "regime_state": "LOW_LIQUIDITY_CHOP",
+        "session_name": "SYDNEY",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 2,
+            "reason": "STOP_HIT"
+          }
+        ],
+        "trades": 2.0,
+        "win_rate": 0.0,
+        "winner_loss_ratio": 0.0
+      },
+      {
+        "avg_duration_minutes": 9.583333333333334,
+        "avg_loss_r": 0.8434087021204503,
+        "avg_mae_r": -0.7245136653314853,
+        "avg_mfe_r": 0.3781472761083163,
+        "avg_r": -0.4700430483275497,
+        "avg_win_r": 0.6500539130511521,
+        "capture_efficiency": 0.31434145281674036,
+        "expectancy_r": -0.4700430483275497,
+        "profit_factor": 0.2569153450028926,
+        "regime_state": "LOW_LIQUIDITY_CHOP",
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 9,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "END_OF_TEST"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 12.0,
+        "win_rate": 0.25,
+        "winner_loss_ratio": 0.7707460350086779
+      },
+      {
+        "avg_duration_minutes": 16.0,
+        "avg_loss_r": 0.4450249363771375,
+        "avg_mae_r": -1.481845830044105,
+        "avg_mfe_r": 0.8541242299236073,
+        "avg_r": -0.25018680995102416,
+        "avg_win_r": 0.042070379688145865,
+        "capture_efficiency": 0.015162958368346946,
+        "expectancy_r": -0.25018680995102416,
+        "profit_factor": 0.06302325442799189,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.4,
+        "winner_loss_ratio": 0.09453488164198784
+      },
+      {
+        "avg_duration_minutes": 16.666666666666668,
+        "avg_loss_r": 0.8377227668191887,
+        "avg_mae_r": -0.9855172437325109,
+        "avg_mfe_r": 0.7616954689779835,
+        "avg_r": -0.24578149790486478,
+        "avg_win_r": 0.938101039923783,
+        "capture_efficiency": 0.24263679563684054,
+        "expectancy_r": -0.24578149790486478,
+        "profit_factor": 0.5599113913817384,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "END_OF_TEST"
+          }
+        ],
+        "trades": 6.0,
+        "win_rate": 0.3333333333333333,
+        "winner_loss_ratio": 1.1198227827634768
+      },
+      {
+        "avg_duration_minutes": 12.0,
+        "avg_loss_r": 1.274731607557876,
+        "avg_mae_r": -0.7810248415654713,
+        "avg_mfe_r": 1.221186380212856,
+        "avg_r": -0.1825779497619881,
+        "avg_win_r": 0.545524488768604,
+        "capture_efficiency": 0.26502146900536433,
+        "expectancy_r": -0.1825779497619881,
+        "profit_factor": 0.6419286446662881,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 3,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.6,
+        "winner_loss_ratio": 0.4279524297775254
+      },
+      {
+        "avg_duration_minutes": 5.0,
+        "avg_loss_r": 1.2661673368631914,
+        "avg_mae_r": -0.5932920866262759,
+        "avg_mfe_r": 2.8781618190789002,
+        "avg_r": 0.1682348563915581,
+        "avg_win_r": 1.6026370496463076,
+        "capture_efficiency": 0.14267414947787338,
+        "expectancy_r": 0.1682348563915581,
+        "profit_factor": 1.2657387400441775,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "SYDNEY",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 1,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 2.0,
+        "win_rate": 0.5,
+        "winner_loss_ratio": 1.2657387400441775
+      }
+    ],
+    "by_symbol": {
+      "BTCUSD": {
+        "events": {
+          "basket_closes": 1,
+          "entries": 33,
+          "entry_rejected_fill": 0,
+          "partials_tp1": 9,
+          "partials_tp2": 1,
+          "scale_in_added": 0,
+          "signal_flip_closes": 0,
+          "sl_to_be": 10,
+          "trail_updates": 1
+        },
+        "expectancy_r": -0.28926627702801766,
+        "max_consecutive_losses": 7,
+        "max_drawdown_r": 10.855861622501443,
+        "net_r": -9.545787141924583,
+        "profit_factor": 0.48211903880368584,
+        "trade_count": 33,
+        "win_rate": 0.36363636363636365
+      },
+      "XAUUSD": {
+        "skipped": "weekend_mode_only"
+      }
+    },
+    "exact_blocker_buckets": [
+      {
+        "avg_duration_minutes": 5.0,
+        "avg_loss_r": 1.1700608041947713,
+        "avg_mae_r": -1.8243163746004034,
+        "avg_mfe_r": 0.4557113707799449,
+        "avg_r": -1.1700608041947713,
+        "avg_win_r": 0.0,
+        "capture_efficiency": 0.0,
+        "expectancy_r": -1.1700608041947713,
+        "profit_factor": 0.0,
+        "regime_state": "LOW_LIQUIDITY_CHOP",
+        "session_name": "SYDNEY",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 2,
+            "reason": "STOP_HIT"
+          }
+        ],
+        "trades": 2.0,
+        "win_rate": 0.0,
+        "winner_loss_ratio": 0.0
+      },
+      {
+        "avg_duration_minutes": 9.583333333333334,
+        "avg_loss_r": 0.8434087021204503,
+        "avg_mae_r": -0.7245136653314853,
+        "avg_mfe_r": 0.3781472761083163,
+        "avg_r": -0.4700430483275497,
+        "avg_win_r": 0.6500539130511521,
+        "capture_efficiency": 0.31434145281674036,
+        "expectancy_r": -0.4700430483275497,
+        "profit_factor": 0.2569153450028926,
+        "regime_state": "LOW_LIQUIDITY_CHOP",
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 9,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "END_OF_TEST"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 12.0,
+        "win_rate": 0.25,
+        "winner_loss_ratio": 0.7707460350086779
+      },
+      {
+        "avg_duration_minutes": 16.0,
+        "avg_loss_r": 0.4450249363771375,
+        "avg_mae_r": -1.481845830044105,
+        "avg_mfe_r": 0.8541242299236073,
+        "avg_r": -0.25018680995102416,
+        "avg_win_r": 0.042070379688145865,
+        "capture_efficiency": 0.015162958368346946,
+        "expectancy_r": -0.25018680995102416,
+        "profit_factor": 0.06302325442799189,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.4,
+        "winner_loss_ratio": 0.09453488164198784
+      },
+      {
+        "avg_duration_minutes": 16.666666666666668,
+        "avg_loss_r": 0.8377227668191887,
+        "avg_mae_r": -0.9855172437325109,
+        "avg_mfe_r": 0.7616954689779835,
+        "avg_r": -0.24578149790486478,
+        "avg_win_r": 0.938101039923783,
+        "capture_efficiency": 0.24263679563684054,
+        "expectancy_r": -0.24578149790486478,
+        "profit_factor": 0.5599113913817384,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "END_OF_TEST"
+          }
+        ],
+        "trades": 6.0,
+        "win_rate": 0.3333333333333333,
+        "winner_loss_ratio": 1.1198227827634768
+      },
+      {
+        "avg_duration_minutes": 12.0,
+        "avg_loss_r": 1.274731607557876,
+        "avg_mae_r": -0.7810248415654713,
+        "avg_mfe_r": 1.221186380212856,
+        "avg_r": -0.1825779497619881,
+        "avg_win_r": 0.545524488768604,
+        "capture_efficiency": 0.26502146900536433,
+        "expectancy_r": -0.1825779497619881,
+        "profit_factor": 0.6419286446662881,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 3,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.6,
+        "winner_loss_ratio": 0.4279524297775254
+      }
+    ],
+    "overall": {
+      "avg_duration_minutes": 11.515151515151516,
+      "avg_loss_r": 0.8777331598028908,
+      "avg_mae_r": -0.9345518166252614,
+      "avg_mfe_r": 0.8622986956654513,
+      "avg_r": -0.28926627702801766,
+      "avg_win_r": 0.7405507678280104,
+      "capture_efficiency": 0.2339273411214304,
+      "expectancy_r": -0.28926627702801766,
+      "profit_factor": 0.48211903880368584,
+      "top_exit_reasons": [
+        {
+          "count": 23,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 4,
+          "reason": "TP_HIT"
+        },
+        {
+          "count": 3,
+          "reason": "BASKET_CLOSE"
+        },
+        {
+          "count": 3,
+          "reason": "END_OF_TEST"
+        }
+      ],
+      "trades": 33.0,
+      "win_rate": 0.36363636363636365,
+      "winner_loss_ratio": 0.8437083179064502
+    },
+    "quality_tier_counts": {
+      "B": 11,
+      "C": 22
+    },
+    "recycled_trade_count": 0,
+    "rr_distribution": {
+      "1.5-1.8": 22,
+      "1.7-2.0": 1,
+      "2.2-2.8": 10
+    },
+    "symbols": [
+      "XAUUSD",
+      "BTCUSD"
+    ],
+    "top_20_approved_reasons": [
+      {
+        "count": 22,
+        "reason": "combined_strategy_score"
+      },
+      {
+        "count": 11,
+        "reason": "throughput_recovery_b"
+      }
+    ],
+    "top_20_approved_reasons_with_ancestry": [
+      {
+        "btc_weekend_mode": true,
+        "correlation_penalty": false,
+        "count": 22,
+        "reason": "combined_strategy_score",
+        "recycle_session": false,
+        "streak_adjust_mode": "NEUTRAL",
+        "transition_momentum": false,
+        "velocity_decay": false
+      },
+      {
+        "btc_weekend_mode": true,
+        "correlation_penalty": false,
+        "count": 11,
+        "reason": "throughput_recovery_b",
+        "recycle_session": false,
+        "streak_adjust_mode": "NEUTRAL",
+        "transition_momentum": false,
+        "velocity_decay": false
+      }
+    ],
+    "velocity_decay_counts": {
+      "inactive": 33
+    },
+    "verified_trade_count": 33,
+    "weekend_mode_only": true,
+    "worst_buckets": [
+      {
+        "avg_duration_minutes": 5.0,
+        "avg_loss_r": 1.1700608041947713,
+        "avg_mae_r": -1.8243163746004034,
+        "avg_mfe_r": 0.4557113707799449,
+        "avg_r": -1.1700608041947713,
+        "avg_win_r": 0.0,
+        "capture_efficiency": 0.0,
+        "expectancy_r": -1.1700608041947713,
+        "profit_factor": 0.0,
+        "regime_state": "LOW_LIQUIDITY_CHOP",
+        "session_name": "SYDNEY",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 2,
+            "reason": "STOP_HIT"
+          }
+        ],
+        "trades": 2.0,
+        "win_rate": 0.0,
+        "winner_loss_ratio": 0.0
+      },
+      {
+        "avg_duration_minutes": 9.583333333333334,
+        "avg_loss_r": 0.8434087021204503,
+        "avg_mae_r": -0.7245136653314853,
+        "avg_mfe_r": 0.3781472761083163,
+        "avg_r": -0.4700430483275497,
+        "avg_win_r": 0.6500539130511521,
+        "capture_efficiency": 0.31434145281674036,
+        "expectancy_r": -0.4700430483275497,
+        "profit_factor": 0.2569153450028926,
+        "regime_state": "LOW_LIQUIDITY_CHOP",
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 9,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "END_OF_TEST"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 12.0,
+        "win_rate": 0.25,
+        "winner_loss_ratio": 0.7707460350086779
+      },
+      {
+        "avg_duration_minutes": 16.0,
+        "avg_loss_r": 0.4450249363771375,
+        "avg_mae_r": -1.481845830044105,
+        "avg_mfe_r": 0.8541242299236073,
+        "avg_r": -0.25018680995102416,
+        "avg_win_r": 0.042070379688145865,
+        "capture_efficiency": 0.015162958368346946,
+        "expectancy_r": -0.25018680995102416,
+        "profit_factor": 0.06302325442799189,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.4,
+        "winner_loss_ratio": 0.09453488164198784
+      },
+      {
+        "avg_duration_minutes": 16.666666666666668,
+        "avg_loss_r": 0.8377227668191887,
+        "avg_mae_r": -0.9855172437325109,
+        "avg_mfe_r": 0.7616954689779835,
+        "avg_r": -0.24578149790486478,
+        "avg_win_r": 0.938101039923783,
+        "capture_efficiency": 0.24263679563684054,
+        "expectancy_r": -0.24578149790486478,
+        "profit_factor": 0.5599113913817384,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "TOKYO",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 4,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "END_OF_TEST"
+          }
+        ],
+        "trades": 6.0,
+        "win_rate": 0.3333333333333333,
+        "winner_loss_ratio": 1.1198227827634768
+      },
+      {
+        "avg_duration_minutes": 12.0,
+        "avg_loss_r": 1.274731607557876,
+        "avg_mae_r": -0.7810248415654713,
+        "avg_mfe_r": 1.221186380212856,
+        "avg_r": -0.1825779497619881,
+        "avg_win_r": 0.545524488768604,
+        "capture_efficiency": 0.26502146900536433,
+        "expectancy_r": -0.1825779497619881,
+        "profit_factor": 0.6419286446662881,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "NEW_YORK",
+        "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 3,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 2,
+            "reason": "BASKET_CLOSE"
+          }
+        ],
+        "trades": 5.0,
+        "win_rate": 0.6,
+        "winner_loss_ratio": 0.4279524297775254
+      },
+      {
+        "avg_duration_minutes": 5.0,
+        "avg_loss_r": 1.2661673368631914,
+        "avg_mae_r": -0.5932920866262759,
+        "avg_mfe_r": 2.8781618190789002,
+        "avg_r": 0.1682348563915581,
+        "avg_win_r": 1.6026370496463076,
+        "capture_efficiency": 0.14267414947787338,
+        "expectancy_r": 0.1682348563915581,
+        "profit_factor": 1.2657387400441775,
+        "regime_state": "MEAN_REVERSION",
+        "session_name": "SYDNEY",
+        "strategy_key": "BTCUSD_VOLATILE_RETEST",
+        "symbol": "BTCUSD",
+        "top_exit_reasons": [
+          {
+            "count": 1,
+            "reason": "STOP_HIT"
+          },
+          {
+            "count": 1,
+            "reason": "TP_HIT"
+          }
+        ],
+        "trades": 2.0,
+        "win_rate": 0.5,
+        "winner_loss_ratio": 1.2657387400441775
+      }
+    ]
+  },
+  "weekend_mode_only": true,
+  "worst_buckets": [
+    {
+      "avg_duration_minutes": 5.0,
+      "avg_loss_r": 1.1700608041947713,
+      "avg_mae_r": -1.8243163746004034,
+      "avg_mfe_r": 0.4557113707799449,
+      "avg_r": -1.1700608041947713,
+      "avg_win_r": 0.0,
+      "capture_efficiency": 0.0,
+      "expectancy_r": -1.1700608041947713,
+      "profit_factor": 0.0,
+      "regime_state": "LOW_LIQUIDITY_CHOP",
+      "session_name": "SYDNEY",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 2,
+          "reason": "STOP_HIT"
+        }
+      ],
+      "trades": 2.0,
+      "win_rate": 0.0,
+      "winner_loss_ratio": 0.0
+    },
+    {
+      "avg_duration_minutes": 9.583333333333334,
+      "avg_loss_r": 0.8434087021204503,
+      "avg_mae_r": -0.7245136653314853,
+      "avg_mfe_r": 0.3781472761083163,
+      "avg_r": -0.4700430483275497,
+      "avg_win_r": 0.6500539130511521,
+      "capture_efficiency": 0.31434145281674036,
+      "expectancy_r": -0.4700430483275497,
+      "profit_factor": 0.2569153450028926,
+      "regime_state": "LOW_LIQUIDITY_CHOP",
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 9,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "END_OF_TEST"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 12.0,
+      "win_rate": 0.25,
+      "winner_loss_ratio": 0.7707460350086779
+    },
+    {
+      "avg_duration_minutes": 16.0,
+      "avg_loss_r": 0.4450249363771375,
+      "avg_mae_r": -1.481845830044105,
+      "avg_mfe_r": 0.8541242299236073,
+      "avg_r": -0.25018680995102416,
+      "avg_win_r": 0.042070379688145865,
+      "capture_efficiency": 0.015162958368346946,
+      "expectancy_r": -0.25018680995102416,
+      "profit_factor": 0.06302325442799189,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.4,
+      "winner_loss_ratio": 0.09453488164198784
+    },
+    {
+      "avg_duration_minutes": 16.666666666666668,
+      "avg_loss_r": 0.8377227668191887,
+      "avg_mae_r": -0.9855172437325109,
+      "avg_mfe_r": 0.7616954689779835,
+      "avg_r": -0.24578149790486478,
+      "avg_win_r": 0.938101039923783,
+      "capture_efficiency": 0.24263679563684054,
+      "expectancy_r": -0.24578149790486478,
+      "profit_factor": 0.5599113913817384,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "TOKYO",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 4,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "END_OF_TEST"
+        }
+      ],
+      "trades": 6.0,
+      "win_rate": 0.3333333333333333,
+      "winner_loss_ratio": 1.1198227827634768
+    },
+    {
+      "avg_duration_minutes": 12.0,
+      "avg_loss_r": 1.274731607557876,
+      "avg_mae_r": -0.7810248415654713,
+      "avg_mfe_r": 1.221186380212856,
+      "avg_r": -0.1825779497619881,
+      "avg_win_r": 0.545524488768604,
+      "capture_efficiency": 0.26502146900536433,
+      "expectancy_r": -0.1825779497619881,
+      "profit_factor": 0.6419286446662881,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "NEW_YORK",
+      "strategy_key": "BTCUSD_PRICE_ACTION_CONTINUATION",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 3,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 2,
+          "reason": "BASKET_CLOSE"
+        }
+      ],
+      "trades": 5.0,
+      "win_rate": 0.6,
+      "winner_loss_ratio": 0.4279524297775254
+    },
+    {
+      "avg_duration_minutes": 5.0,
+      "avg_loss_r": 1.2661673368631914,
+      "avg_mae_r": -0.5932920866262759,
+      "avg_mfe_r": 2.8781618190789002,
+      "avg_r": 0.1682348563915581,
+      "avg_win_r": 1.6026370496463076,
+      "capture_efficiency": 0.14267414947787338,
+      "expectancy_r": 0.1682348563915581,
+      "profit_factor": 1.2657387400441775,
+      "regime_state": "MEAN_REVERSION",
+      "session_name": "SYDNEY",
+      "strategy_key": "BTCUSD_VOLATILE_RETEST",
+      "symbol": "BTCUSD",
+      "top_exit_reasons": [
+        {
+          "count": 1,
+          "reason": "STOP_HIT"
+        },
+        {
+          "count": 1,
+          "reason": "TP_HIT"
+        }
+      ],
+      "trades": 2.0,
+      "win_rate": 0.5,
+      "winner_loss_ratio": 1.2657387400441775
+    }
+  ]
+}
