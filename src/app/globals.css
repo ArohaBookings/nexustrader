@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --background: #030406;
+  --foreground: #eef7ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 18% 0%, rgba(20, 184, 166, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(244, 63, 94, 0.12), transparent 24%),
+    linear-gradient(135deg, #030406 0%, #071013 48%, #050506 100%);
+  background-size: 48px 48px, 48px 48px, auto, auto, auto;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.38);
+}
+
