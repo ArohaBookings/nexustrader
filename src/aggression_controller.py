@@ -18,6 +18,9 @@ class LiveEvidence:
     expectancy_r: float = 0.0
     profit_factor: float = 0.0
     max_drawdown_r: float = 0.0
+    avg_win_r: float = 0.0
+    avg_loss_r: float = 0.0
+    payoff_ratio: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -33,7 +36,8 @@ class AggressionDecision:
 @dataclass(frozen=True)
 class AggressionConfig:
     enabled: bool = False
-    owner_unlock_required: bool = True
+    owner_unlock_required: bool = False
+    autonomous_base_enabled: bool = True
     bucket_minutes: int = 120
     base_live_cap: int = 5
     proven_live_cap: int = 10
@@ -47,6 +51,8 @@ class AggressionConfig:
     min_win_rate: float = 0.50
     min_expectancy_r: float = 0.0
     min_full_expectancy_r: float = 0.10
+    min_payoff_ratio_for_proven: float = 1.5
+    min_payoff_ratio_for_full: float = 1.5
     state_file: str = "data/aggression_controller_state.json"
 
     @classmethod
@@ -54,7 +60,8 @@ class AggressionConfig:
         data = dict(raw or {})
         return cls(
             enabled=bool(data.get("enabled", False)),
-            owner_unlock_required=bool(data.get("owner_unlock_required", True)),
+            owner_unlock_required=bool(data.get("owner_unlock_required", False)),
+            autonomous_base_enabled=bool(data.get("autonomous_base_enabled", True)),
             bucket_minutes=max(15, int(_number(data.get("bucket_minutes"), 120))),
             base_live_cap=max(0, int(_number(data.get("base_live_cap"), 5))),
             proven_live_cap=max(0, int(_number(data.get("proven_live_cap"), 10))),
@@ -68,6 +75,8 @@ class AggressionConfig:
             min_win_rate=max(0.0, min(1.0, _number(data.get("min_win_rate"), 0.50))),
             min_expectancy_r=_number(data.get("min_expectancy_r"), 0.0),
             min_full_expectancy_r=_number(data.get("min_full_expectancy_r"), 0.10),
+            min_payoff_ratio_for_proven=max(0.0, _number(data.get("min_payoff_ratio_for_proven"), 1.5)),
+            min_payoff_ratio_for_full=max(0.0, _number(data.get("min_payoff_ratio_for_full"), 1.5)),
             state_file=str(data.get("state_file") or "data/aggression_controller_state.json"),
         )
 
@@ -191,6 +200,8 @@ class LiveAggressionController:
         blockers = list(hard_blockers or [])
         if bool(self.config.enabled) and bool(self.config.owner_unlock_required) and not bool(self.state.get("owner_unlocked")):
             blockers.append("telegram_aggression_unlock_required")
+        if bool(self.config.enabled) and not bool(self.config.autonomous_base_enabled) and not bool(self.state.get("owner_unlocked")):
+            blockers.append("autonomous_base_disabled_operator_unlock_required")
         if bool(self.config.enabled) and used >= cap:
             blockers.append("aggression_bucket_cap_reached")
         why_not_full = self._why_not_full(evidence_payload, equity, hard_blockers or [])
@@ -198,6 +209,12 @@ class LiveAggressionController:
         return {
             "enabled": bool(self.config.enabled),
             "owner_unlock_required": bool(self.config.owner_unlock_required),
+            "autonomous_base_enabled": bool(self.config.autonomous_base_enabled),
+            "autonomous_base_active": bool(
+                self.config.enabled
+                and self.config.autonomous_base_enabled
+                and not self.config.owner_unlock_required
+            ),
             "owner_unlocked": bool(self.state.get("owner_unlocked", False)),
             "owner_unlocked_at": str(self.state.get("owner_unlocked_at") or ""),
             "owner_unlocked_source": str(self.state.get("owner_unlocked_source") or ""),
@@ -230,8 +247,18 @@ class LiveAggressionController:
         self._save_state()
 
     def _tier(self, evidence: LiveEvidence, equity: float) -> tuple[int, str, dict[str, Any]]:
-        proven = evidence.trade_count >= self.config.min_trades_for_proven and evidence.win_rate >= self.config.min_win_rate and evidence.expectancy_r > self.config.min_expectancy_r
-        full = evidence.trade_count >= self.config.min_trades_for_full and evidence.win_rate >= self.config.min_win_rate and evidence.expectancy_r >= self.config.min_full_expectancy_r
+        proven = (
+            evidence.trade_count >= self.config.min_trades_for_proven
+            and evidence.win_rate >= self.config.min_win_rate
+            and evidence.expectancy_r > self.config.min_expectancy_r
+            and evidence.payoff_ratio >= self.config.min_payoff_ratio_for_proven
+        )
+        full = (
+            evidence.trade_count >= self.config.min_trades_for_full
+            and evidence.win_rate >= self.config.min_win_rate
+            and evidence.expectancy_r >= self.config.min_full_expectancy_r
+            and evidence.payoff_ratio >= self.config.min_payoff_ratio_for_full
+        )
         hot_growth = full and equity >= self.config.growth_equity_threshold and evidence.expectancy_r >= max(self.config.min_full_expectancy_r, 0.15)
         if full and equity < self.config.bootstrap_equity_threshold:
             tier = "FULL_BOOTSTRAP"
@@ -257,18 +284,24 @@ class LiveAggressionController:
             "min_win_rate": float(self.config.min_win_rate),
             "min_expectancy_r": float(self.config.min_expectancy_r),
             "min_full_expectancy_r": float(self.config.min_full_expectancy_r),
+            "min_payoff_ratio_for_proven": float(self.config.min_payoff_ratio_for_proven),
+            "min_payoff_ratio_for_full": float(self.config.min_payoff_ratio_for_full),
         }
 
     def _why_not_full(self, evidence: LiveEvidence, equity: float, hard_blockers: list[str]) -> list[str]:
         reasons = list(hard_blockers)
         if bool(self.config.owner_unlock_required) and not bool(self.state.get("owner_unlocked")):
             reasons.append("telegram_aggression_unlock_required")
+        if not bool(self.config.autonomous_base_enabled) and not bool(self.state.get("owner_unlocked")):
+            reasons.append("autonomous_base_disabled_operator_unlock_required")
         if evidence.trade_count < self.config.min_trades_for_full:
             reasons.append("insufficient_real_closed_trades_for_full")
         if evidence.win_rate < self.config.min_win_rate:
             reasons.append("win_rate_below_full_gate")
         if evidence.expectancy_r < self.config.min_full_expectancy_r:
             reasons.append("expectancy_below_full_gate")
+        if evidence.payoff_ratio < self.config.min_payoff_ratio_for_full:
+            reasons.append("payoff_ratio_below_full_gate")
         if equity <= 0.0:
             reasons.append("missing_live_equity")
         return reasons
@@ -326,12 +359,26 @@ def coerce_live_evidence(raw: LiveEvidence | Mapping[str, Any] | None) -> LiveEv
         return raw
     data = dict(raw or {})
     overall = data.get("overall") if isinstance(data.get("overall"), Mapping) else {}
+    pnl_values = _pnl_values(data)
+    avg_win_r, avg_loss_r, payoff_ratio = _payoff_stats(pnl_values)
+    avg_win_r = _number(data.get("avg_win_r", overall.get("avg_win_r")), avg_win_r)
+    avg_loss_r = _number(data.get("avg_loss_r", overall.get("avg_loss_r")), avg_loss_r)
+    payoff_ratio = _number(
+        data.get(
+            "payoff_ratio",
+            data.get("reward_risk_ratio", overall.get("payoff_ratio", overall.get("reward_risk_ratio"))),
+        ),
+        payoff_ratio,
+    )
     return LiveEvidence(
         trade_count=int(_number(data.get("trade_count", overall.get("trades")), 0.0)),
         win_rate=_number(overall.get("win_rate", data.get("win_rate")), 0.0),
         expectancy_r=_number(overall.get("expectancy_r", data.get("expectancy_r")), 0.0),
         profit_factor=_number(overall.get("profit_factor", data.get("profit_factor")), 0.0),
         max_drawdown_r=_number(overall.get("max_drawdown_r", data.get("max_drawdown_r")), 0.0),
+        avg_win_r=avg_win_r,
+        avg_loss_r=avg_loss_r,
+        payoff_ratio=payoff_ratio,
     )
 
 
@@ -355,3 +402,29 @@ def _number(value: Any, default: float) -> float:
     except (TypeError, ValueError):
         return default
     return parsed if math.isfinite(parsed) else default
+
+
+def _pnl_values(data: Mapping[str, Any]) -> list[float]:
+    raw = data.get("pnl_r_values", data.get("recent_pnl_r_values", []))
+    if not isinstance(raw, list):
+        return []
+    values: list[float] = []
+    for item in raw:
+        value = _number(item, math.nan)
+        if math.isfinite(value):
+            values.append(value)
+    return values
+
+
+def _payoff_stats(values: list[float]) -> tuple[float, float, float]:
+    wins = [float(item) for item in values if float(item) > 0.0]
+    losses = [abs(float(item)) for item in values if float(item) < 0.0]
+    avg_win = sum(wins) / len(wins) if wins else 0.0
+    avg_loss = sum(losses) / len(losses) if losses else 0.0
+    if avg_win > 0.0 and avg_loss <= 0.0:
+        payoff = 999.0
+    elif avg_win > 0.0 and avg_loss > 0.0:
+        payoff = avg_win / avg_loss
+    else:
+        payoff = 0.0
+    return float(avg_win), float(avg_loss), float(payoff)

@@ -14823,7 +14823,7 @@ def create_bridge_app(
       mkMetric("Scaler",`${Number(scaler.quick_scaler_score||0).toFixed(1)}%`),
       mkMetric("Scaler Status",scaler.status||"unknown"),
       mkMetric("Edge Proof",(scaler.statistical_edge||{}).passed?'PASSED':'PENDING'),
-      mkMetric("Aggression",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'UNLOCKED':'LOCKED'}`),
+      mkMetric("Aggression",`${ag.tier||'UNKNOWN'} ${ag.autonomous_base_active?'AUTO':(ag.owner_unlocked?'UNLOCKED':'LOCKED')}`),
       mkMetric("2h Entries",`${Number(ag.used||0).toFixed(0)}/${Number(ag.cap||0).toFixed(0)}`),
       mkMetric("Broker",broker.terminal_connected?"CONNECTED":"DISCONNECTED"),
       mkMetric("Session",s.current_session||h.current_session||""),
@@ -14941,9 +14941,10 @@ def create_bridge_app(
             ${mkMetric("Data quality",`${(Number(dataQuality.score||0)*100).toFixed(1)}%`)}
             ${mkMetric("Promotion",promotion.reason||anti.reason||'unknown')}
             ${mkMetric("Live-shadow",liveShadow.status||'collecting_or_aligned')}
-            ${mkMetric("Aggression tier",`${ag.tier||'UNKNOWN'} ${ag.owner_unlocked?'unlocked':'locked'}`)}
+            ${mkMetric("Aggression tier",`${ag.tier||'UNKNOWN'} ${ag.autonomous_base_active?'auto-base':(ag.owner_unlocked?'unlocked':'locked')}`)}
             ${mkMetric("2h cap left",`${Number(ag.remaining||0).toFixed(0)} / ${Number(ag.cap||0).toFixed(0)}`)}
             ${mkMetric("Live WR / Exp",`${(Number(live.win_rate||0)*100).toFixed(1)}% / ${Number(live.expectancy_r||0).toFixed(3)}R`)}
+            ${mkMetric("Payoff ratio",`${Number(live.payoff_ratio||0).toFixed(2)}R`)}
             ${mkMetric("Learner score",`${Number(scaler.quick_learner_score||0).toFixed(1)}%`)}
             ${mkMetric("Scaler score",`${Number(scaler.quick_scaler_score||0).toFixed(1)}%`)}
             ${mkMetric("Scaler proof",scaler.claim||'not_proven_world_class_yet')}

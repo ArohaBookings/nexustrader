@@ -31,6 +31,20 @@ def _controller(tmp_path, **overrides) -> LiveAggressionController:
     return LiveAggressionController.from_mapping(config)
 
 
+def test_autonomous_base_tier_can_run_without_telegram_unlock(tmp_path) -> None:
+    controller = _controller(tmp_path, owner_unlock_required=False, autonomous_base_enabled=True)
+    now = datetime(2026, 5, 4, 0, 0, tzinfo=UTC)
+
+    decision = controller.try_consume(signal_id="sig-auto", symbol="XAUUSD", evidence={}, equity=100.0, now=now)
+    snapshot = controller.snapshot(now=now)
+
+    assert decision.allowed is True
+    assert decision.reason == "allowed"
+    assert snapshot["owner_unlocked"] is False
+    assert snapshot["autonomous_base_active"] is True
+    assert snapshot["remaining"] == 4
+
+
 def test_base_tier_requires_telegram_owner_unlock(tmp_path) -> None:
     controller = _controller(tmp_path)
     now = datetime(2026, 5, 4, 0, 0, tzinfo=UTC)
@@ -103,7 +117,11 @@ def test_proven_tier_requires_real_closed_trade_win_rate_and_expectancy(tmp_path
     controller.unlock(now=now)
 
     snapshot = controller.snapshot(
-        evidence={"trade_count": 10, "overall": {"win_rate": 0.50, "expectancy_r": 0.01, "profit_factor": 1.1}},
+        evidence={
+            "trade_count": 10,
+            "overall": {"win_rate": 0.50, "expectancy_r": 0.01, "profit_factor": 1.1},
+            "pnl_r_values": [0.30, -0.10] * 5,
+        },
         equity=120.0,
         now=now,
     )
@@ -111,13 +129,38 @@ def test_proven_tier_requires_real_closed_trade_win_rate_and_expectancy(tmp_path
     assert snapshot["tier"] == "PROVEN"
     assert snapshot["cap"] == 10
     assert snapshot["promotion"]["proven_ready"] is True
+    assert abs(float(snapshot["live_evidence"]["payoff_ratio"]) - 3.0) < 1e-9
+
+
+def test_proven_tier_requires_payoff_ratio_gate(tmp_path) -> None:
+    controller = _controller(tmp_path)
+    now = datetime(2026, 5, 4, 0, 0, tzinfo=UTC)
+    controller.unlock(now=now)
+
+    snapshot = controller.snapshot(
+        evidence={
+            "trade_count": 10,
+            "overall": {"win_rate": 0.70, "expectancy_r": 0.01, "profit_factor": 1.1},
+            "pnl_r_values": [0.10] * 7 + [-0.20] * 3,
+        },
+        equity=120.0,
+        now=now,
+    )
+
+    assert snapshot["tier"] == "BASE"
+    assert snapshot["promotion"]["proven_ready"] is False
+    assert snapshot["live_evidence"]["payoff_ratio"] < snapshot["promotion"]["min_payoff_ratio_for_proven"]
 
 
 def test_full_bootstrap_tier_requires_stronger_real_evidence_and_keeps_hard_rails(tmp_path) -> None:
     controller = _controller(tmp_path)
     now = datetime(2026, 5, 4, 0, 0, tzinfo=UTC)
     controller.unlock(now=now)
-    evidence = {"trade_count": 20, "overall": {"win_rate": 0.55, "expectancy_r": 0.10, "profit_factor": 1.4}}
+    evidence = {
+        "trade_count": 20,
+        "overall": {"win_rate": 0.55, "expectancy_r": 0.10, "profit_factor": 1.4},
+        "pnl_r_values": [0.30] * 11 + [-0.10] * 9,
+    }
 
     snapshot = controller.snapshot(evidence=evidence, equity=100.0, hard_blockers=["daily_guard_daily_defensive"], now=now)
     decision = controller.try_consume(signal_id="sig-hard", symbol="XAUUSD", evidence=evidence, equity=100.0, hard_blockers=["daily_guard_daily_defensive"], now=now)

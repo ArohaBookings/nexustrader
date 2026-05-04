@@ -517,7 +517,8 @@ frequency_policy:
 
 aggression_controller:
   enabled: true
-  owner_unlock_required: true
+  owner_unlock_required: false
+  autonomous_base_enabled: true
   bucket_minutes: 120
   base_live_cap: 5
   proven_live_cap: 10
@@ -531,6 +532,8 @@ aggression_controller:
   min_win_rate: 0.50
   min_expectancy_r: 0.0
   min_full_expectancy_r: 0.10
+  min_payoff_ratio_for_proven: 1.50
+  min_payoff_ratio_for_full: 1.50
   state_file: "data/aggression_controller_state.json"
 
 learning_scaler_scorecard:
