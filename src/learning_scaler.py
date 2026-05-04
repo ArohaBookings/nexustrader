@@ -74,7 +74,7 @@ def build_learning_scaler_scorecard(
         status = "protected_by_hard_rails"
     elif "aggression_bucket_cap_reached" in blockers:
         status = "bucket_cap_reached_waiting_reset"
-    elif not bool(aggression.get("owner_unlocked")):
+    elif bool(aggression.get("owner_unlock_required")) and not bool(aggression.get("owner_unlocked")):
         status = "ready_for_owner_base_unlock" if equity > 0 else "waiting_for_live_account"
     elif live["trade_count"] < config.min_real_trades_for_score:
         status = "collecting_live_evidence"
@@ -125,6 +125,8 @@ def build_learning_scaler_scorecard(
         "equity": round(equity, 2),
         "tier": str(aggression.get("tier") or "UNKNOWN"),
         "owner_unlocked": bool(aggression.get("owner_unlocked")),
+        "owner_unlock_required": bool(aggression.get("owner_unlock_required")),
+        "autonomous_base_active": bool(aggression.get("autonomous_base_active")),
         "bucket": {
             "cap": int(_number(aggression.get("cap"), 0.0)),
             "used": int(_number(aggression.get("used"), 0.0)),
@@ -173,6 +175,9 @@ def _live_evidence(*, rollout: Mapping[str, Any], aggression: Mapping[str, Any])
         "expectancy_r": _number(raw_live.get("expectancy_r", overall.get("expectancy_r")), 0.0),
         "profit_factor": _number(raw_live.get("profit_factor", overall.get("profit_factor")), 0.0),
         "max_drawdown_r": _number(raw_live.get("max_drawdown_r", overall.get("max_drawdown_r")), 0.0),
+        "avg_win_r": _number(raw_live.get("avg_win_r", overall.get("avg_win_r")), 0.0),
+        "avg_loss_r": _number(raw_live.get("avg_loss_r", overall.get("avg_loss_r")), 0.0),
+        "payoff_ratio": _number(raw_live.get("payoff_ratio", overall.get("payoff_ratio")), 0.0),
     }
 
 
@@ -323,7 +328,7 @@ def _quick_scaler_score(
         "FULL_GROWTH": 82.0,
         "FULL_GROWTH_HOT": 90.0,
     }.get(tier, 10.0)
-    if not bool(aggression.get("owner_unlocked")):
+    if bool(aggression.get("owner_unlock_required")) and not bool(aggression.get("owner_unlocked")):
         tier_points = min(tier_points, 15.0)
     sample = _ratio(float(live.get("trade_count") or 0.0), float(config.full_scale_min_trades)) * 18.0
     edge = _ratio(max(0.0, float(live.get("expectancy_r") or 0.0)), max(config.full_scale_expectancy_r, 0.01)) * 14.0
