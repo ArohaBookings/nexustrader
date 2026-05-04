@@ -47,6 +47,7 @@ export function buildInstitutionalIntelligence(overview: OverviewLike) {
   const orders = Array.isArray(overview.orders) ? overview.orders : [];
   const risks = Array.isArray(overview.risks) ? overview.risks : [];
   const fundedStatus = record(overview.funded?.status);
+  const botPayload = record(bot.payload);
   const market = buildMarketMastery(symbols);
   const blockers = buildRepairPlan(symbols, risks, fundedStatus, bot);
   const antiOverfit = buildAntiOverfitGate(bot, trades);
@@ -77,6 +78,14 @@ export function buildInstitutionalIntelligence(overview: OverviewLike) {
     scaling,
     execution,
     telegramBrief: buildTelegramBrief(readiness, fundedMission, blockers, antiOverfit, dataFusion, scaling),
+    bridgeApex: record(botPayload.institutional_apex),
+    edgePolicy: record(botPayload.institutional_intelligence),
+    trainingBootstrap: record(botPayload.training_bootstrap_status),
+    dataQualityOverlay: record(botPayload.data_quality),
+    promotionAudit: record(botPayload.promotion_audit),
+    trajectoryForecast: record(botPayload.trajectory_forecast),
+    opportunityPipeline: record(botPayload.xau_btc_opportunity_pipeline),
+    liveShadowGap: record(botPayload.live_shadow_gap),
     operatorLimits: [
       "No direct Telegram trade placement.",
       "No AI-driven risk/aggression increases.",

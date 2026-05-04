@@ -48,8 +48,24 @@ export async function handleTelegramCommand(context: CommandContext) {
     return formatFunded(await getOverview());
   }
 
+  if (lower === "/trajectory" || /\b(trajectory|100k|forecast)\b/i.test(text)) {
+    return formatTrajectory(await getOverview());
+  }
+
+  if (lower === "/losses" || /\b(losses|loss review|why losing|losing too much)\b/i.test(text)) {
+    return formatLosses(await getOverview());
+  }
+
+  if (lower === "/blockers" || /\b(blockers|blocked|why blocked|not trading)\b/i.test(text)) {
+    return formatBlockers(await getOverview());
+  }
+
   if (lower === "/intel" || lower === "/apex" || /\b(intel|intelligence|thinking|edge|scale|100k)\b/i.test(text)) {
     return formatIntel(await getOverview());
+  }
+
+  if (/\b(increase|more|raise|boost).*\b(frequency|trades|entries)\b|\bfrequency\b.*\b(xau|btc|gold)\b/i.test(text)) {
+    return formatFrequencyPolicy(await getOverview());
   }
 
   if (lower === "/repair" || /\b(repair|fix|self[- ]?heal|unstick)\b/i.test(text)) {
@@ -175,6 +191,66 @@ function formatIntel(overview: Awaited<ReturnType<typeof getOverview>>) {
     `Overfit gate: ${anti.reason ?? "unknown"} | Recent: ${anti.recentSample ?? 0} | Validation: ${anti.validationSample ?? 0}`,
     `Data consensus: ${percent(Number(data.consensusScore ?? 0))} | Active sources: ${data.activeSources ?? 0}`,
     `Scaling: ${scaling.aggression ?? "unknown"} | Max risk/trade: ${usd(Number(scaling.maxRiskPerTradeUsd ?? 0))} | Max open trades: ${scaling.maxOpenTrades ?? 0}`,
+  ].join("\n");
+}
+
+function formatTrajectory(overview: Awaited<ReturnType<typeof getOverview>>) {
+  const intelligence = overview.intelligence as Record<string, unknown>;
+  const trajectory = record(intelligence.trajectoryForecast);
+  return [
+    "*Trajectory*",
+    `Current equity: ${usd(Number(trajectory.current_equity ?? trajectory.currentEquity ?? 0))}`,
+    `Short goal: ${usd(Number(trajectory.short_goal_equity ?? trajectory.shortGoalEquity ?? 100000))} | On track: ${Boolean(trajectory.short_goal_on_track ?? trajectory.shortGoalOnTrack)}`,
+    `Medium goal: ${usd(Number(trajectory.medium_goal_equity ?? trajectory.mediumGoalEquity ?? 1000000))} | On track: ${Boolean(trajectory.medium_goal_on_track ?? trajectory.mediumGoalOnTrack)}`,
+    `Forecast type: ${trajectory.forecast_type ?? trajectory.forecastType ?? "speculative_target_path"}`,
+    "This forecast is not a sizing input and does not authorize higher risk.",
+  ].join("\n");
+}
+
+function formatLosses(overview: Awaited<ReturnType<typeof getOverview>>) {
+  const intelligence = overview.intelligence as Record<string, unknown>;
+  const liveShadow = record(intelligence.liveShadowGap);
+  const priority = array(liveShadow.priority_symbols ?? liveShadow.prioritySymbols).map(record);
+  const bridgeApex = record(intelligence.bridgeApex);
+  const execution = record(intelligence.execution);
+  return [
+    "*Loss Review*",
+    `Readiness: ${bridgeApex.readiness ?? intelligence.readiness ?? "unknown"}`,
+    `Execution score: ${percent(Number(execution.score ?? 0))} | Floating win rate: ${percent(Number(execution.winRate ?? execution.floating_win_rate ?? 0))}`,
+    `Live-shadow status: ${liveShadow.status ?? "collecting_or_aligned"} | Max gap: ${percent(Number(liveShadow.max_gap_score ?? liveShadow.maxGapScore ?? 0))}`,
+    `Priority symbols: ${priority.map((item) => `${item.symbol}:${item.status ?? "collecting"}`).join(", ") || "insufficient samples"}`,
+    "Next safe action: collect more BTCUSD/XAUUSD live-shadow evidence before promoting risk or frequency.",
+  ].join("\n");
+}
+
+function formatBlockers(overview: Awaited<ReturnType<typeof getOverview>>) {
+  const intelligence = overview.intelligence as Record<string, unknown>;
+  const repair = record(intelligence.selfRepair);
+  const edgeRepair = record(record(intelligence.edgePolicy).self_repair ?? record(intelligence.edgePolicy).selfRepair);
+  const activeRepair = Object.keys(edgeRepair).length ? edgeRepair : repair;
+  const opportunity = record(intelligence.opportunityPipeline);
+  const priority = array(opportunity.priority_symbols ?? opportunity.prioritySymbols).map(record);
+  return [
+    "*Blockers*",
+    `Repair: ${activeRepair.status ?? "unknown"} | Soft: ${array(activeRepair.soft_blockers ?? activeRepair.softBlockers).length} | Hard: ${array(activeRepair.hard_rails ?? activeRepair.hardRails).length}`,
+    `Recommended action: ${activeRepair.recommended_bridge_action ?? activeRepair.recommendedBridgeAction ?? "none"}`,
+    `BTC/XAU: ${priority.map((item) => `${item.symbol}:${item.live_gate ?? item.liveGate ?? "edge_gated"}`).join(", ") || "waiting for priority telemetry"}`,
+    "Hard rails are locked and will not be auto-repaired.",
+  ].join("\n");
+}
+
+function formatFrequencyPolicy(overview: Awaited<ReturnType<typeof getOverview>>) {
+  const intelligence = overview.intelligence as Record<string, unknown>;
+  const opportunity = record(intelligence.opportunityPipeline);
+  const priority = array(opportunity.priority_symbols ?? opportunity.prioritySymbols).map(record);
+  return [
+    "*Frequency Policy*",
+    "Live frequency is edge-gated; Telegram cannot force entries, raise risk, or change parameters.",
+    ...priority.slice(0, 4).map((item) => {
+      const target = record(item.shadow_target_10m ?? item.shadowTarget10m);
+      return `${item.symbol}: shadow ${target.low ?? 0}-${target.high ?? 0}/10m | candidates ${item.actual_candidates_last_10m ?? item.actualCandidatesLast10m ?? 0} | live ${item.actual_live_trades_last_10m ?? item.actualLiveTradesLast10m ?? 0} | gate ${item.live_gate ?? item.liveGate ?? "edge_gated"}`;
+    }),
+    `Forced live frequency: ${Boolean(opportunity.live_frequency_forced ?? opportunity.liveFrequencyForced)}`,
   ].join("\n");
 }
 

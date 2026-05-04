@@ -36,6 +36,7 @@ export function bridgePayloadToIngest(input: {
   const stats = asRecord(input.stats);
   const dashboard = asRecord(input.dashboard);
   const runtime = asRecord(dashboard.runtime);
+  const summary = asRecord(dashboard.summary);
   const account = asRecord(dashboard.account);
   const control = asRecord(dashboard.control_state ?? dashboard.operator_control);
   const pairs = asArray(dashboard.pairs ?? dashboard.symbols ?? dashboard.strategy_pool);
@@ -47,12 +48,12 @@ export function bridgePayloadToIngest(input: {
     bot: {
       observedAt,
       source: "bridge",
-      equity: numberFrom(stats.equity, stats.current_equity, dashboard.equity, account.equity, runtime.equity),
-      balance: numberFrom(stats.balance, dashboard.balance, account.balance),
-      pnlToday: numberFrom(stats.pnl_today, stats.daily_pnl, dashboard.pnl_today, runtime.pnl_today),
-      drawdownPct: numberFrom(stats.drawdown_pct, dashboard.drawdown_pct, runtime.drawdown_pct),
-      queueDepth: numberFrom(stats.queue_depth, runtime.queue_depth),
-      session: textFrom(String(stats.session ?? ""), String(dashboard.session ?? ""), String(runtime.session ?? "")),
+      equity: numberFrom(stats.equity, stats.current_equity, dashboard.equity, summary.equity, account.equity, runtime.equity),
+      balance: numberFrom(stats.balance, dashboard.balance, summary.balance, account.balance),
+      pnlToday: numberFrom(stats.pnl_today, stats.daily_pnl, dashboard.pnl_today, summary.daily_pnl, summary.pnl_today, runtime.pnl_today),
+      drawdownPct: numberFrom(stats.drawdown_pct, dashboard.drawdown_pct, summary.drawdown_pct, runtime.drawdown_pct),
+      queueDepth: numberFrom(stats.queue_depth, dashboard.queue_depth, summary.queue_depth, runtime.queue_depth),
+      session: textFrom(String(stats.session ?? ""), String(dashboard.session ?? ""), String(summary.session ?? ""), String(runtime.session ?? "")),
       killState: textFrom(String(control.kill_switch ?? ""), String(dashboard.kill_state ?? ""), String(health.status ?? "")),
       openRiskPct: numberFrom(stats.open_risk_pct, dashboard.open_risk_pct, runtime.open_risk_pct),
       payload: {
@@ -66,6 +67,16 @@ export function bridgePayloadToIngest(input: {
         data_sources: asRecord(stats.data_sources ?? dashboard.data_sources ?? dashboard.providers),
         market_context: asRecord(stats.market_context ?? dashboard.market_context),
         learning: asRecord(stats.learning ?? stats.self_evolution ?? dashboard.learning),
+        institutional_apex: asRecord(dashboard.institutional_apex),
+        institutional_intelligence: asRecord(dashboard.institutional_intelligence),
+        training_bootstrap_status: asRecord(dashboard.training_bootstrap_status),
+        data_quality: asRecord(dashboard.data_quality),
+        self_repair: asRecord(dashboard.self_repair),
+        promotion_audit: asRecord(dashboard.promotion_audit),
+        funded_mission: asRecord(dashboard.funded_mission),
+        trajectory_forecast: asRecord(dashboard.trajectory_forecast),
+        xau_btc_opportunity_pipeline: asRecord(dashboard.xau_btc_opportunity_pipeline),
+        live_shadow_gap: asRecord(dashboard.live_shadow_gap),
       },
     },
     symbols: pairs.map((pair) => ({

@@ -285,6 +285,14 @@ function ApexPanel({ intelligence }: { intelligence: Record<string, unknown> }) 
   const repair = asRecord(intelligence.selfRepair);
   const scaling = asRecord(intelligence.scaling);
   const execution = asRecord(intelligence.execution);
+  const edgePolicy = asRecord(intelligence.edgePolicy);
+  const training = asRecord(intelligence.trainingBootstrap);
+  const dataOverlay = asRecord(intelligence.dataQualityOverlay);
+  const promotion = asRecord(intelligence.promotionAudit);
+  const trajectory = asRecord(intelligence.trajectoryForecast);
+  const opportunity = asRecord(intelligence.opportunityPipeline);
+  const liveShadow = asRecord(intelligence.liveShadowGap);
+  const priorityRows = asArray(opportunity.priority_symbols ?? opportunity.prioritySymbols).map(asRecord);
   const rows = asArray(market.rows).map(asRecord);
   const providers = asArray(data.providers).map(asRecord);
   const softBlockers = asArray(repair.softBlockers).map(asRecord);
@@ -326,6 +334,57 @@ function ApexPanel({ intelligence }: { intelligence: Record<string, unknown> }) 
                 {note}
               </p>
             ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Panel title="Edge-Gated BTC / XAU Control" icon={Zap}>
+          <div className="grid gap-3 md:grid-cols-3">
+            <Pulse label="Policy" value={text(edgePolicy.policy, "edge_gated_no_forced_live_frequency")} tone="cyan" />
+            <Pulse label="Training" value={text(training.status, "waiting")} tone={text(training.status, "").includes("cleared") ? "lime" : "amber"} />
+            <Pulse label="Live expansion" value={String(Boolean(training.live_risk_expansion_allowed ?? training.liveRiskExpansionAllowed))} tone={training.live_risk_expansion_allowed ? "lime" : "amber"} />
+            <Pulse label="Data quality" value={percent(n(dataOverlay.score ?? data.consensusScore))} tone={toneFromScore(n(dataOverlay.score ?? data.consensusScore))} />
+            <Pulse label="Promotion gate" value={text(promotion.reason, text(anti.reason, "unknown"))} tone={promotion.promotion_allowed || anti.promotionAllowed ? "lime" : "amber"} />
+            <Pulse label="Live-shadow gap" value={text(liveShadow.status, "collecting_or_aligned")} tone={n(liveShadow.max_gap_score ?? liveShadow.maxGapScore) >= 0.3 ? "rose" : "cyan"} />
+          </div>
+          <div className="mt-4 grid gap-3">
+            {priorityRows.length ? (
+              priorityRows.map((row) => {
+                const target = asRecord(row.shadow_target_10m ?? row.shadowTarget10m);
+                return (
+                  <div key={text(row.symbol, "symbol")} className="border border-white/10 bg-white/[0.03] p-4">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-mono text-lg font-semibold text-white">{text(row.symbol, "UNKNOWN")}</p>
+                      <StateBadge state={text(row.live_gate ?? row.liveGate, "edge_gated")} />
+                    </div>
+                    <div className="grid gap-2 text-sm text-zinc-300 md:grid-cols-2">
+                      <span>Shadow target: {String(target.low ?? 0)}-{String(target.high ?? 0)} / 10m</span>
+                      <span>Candidate debt: {String(row.candidate_debt_10m ?? row.candidateDebt10m ?? 0)}</span>
+                      <span>Live trades last 10m: {String(row.actual_live_trades_last_10m ?? row.actualLiveTradesLast10m ?? 0)}</span>
+                      <span>Action: {text(row.recommended_action ?? row.recommendedAction, "observe")}</span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-zinc-400">Waiting for BTC/XAU edge-gated telemetry from the bridge.</p>
+            )}
+          </div>
+          <p className="mt-4 border border-amber-300/25 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+            Live frequency is never forced. Under-trading debt increases shadow sampling and diagnostics first; MT5 risk, drawdown,
+            funded, spread, and stale-data rails stay authoritative.
+          </p>
+        </Panel>
+
+        <Panel title="Speculative Trajectory Evidence" icon={TrendingUp}>
+          <div className="grid gap-3">
+            <MiniStat label="Current equity" value={usd(n(trajectory.current_equity ?? trajectory.currentEquity))} />
+            <MiniStat label="Short goal" value={usd(n(trajectory.short_goal_equity ?? trajectory.shortGoalEquity, 100000))} />
+            <MiniStat label="Short goal on track" value={String(Boolean(trajectory.short_goal_on_track ?? trajectory.shortGoalOnTrack))} />
+            <MiniStat label="Trained samples" value={String(training.trained_samples ?? training.trainedSamples ?? 0)} />
+            <MiniStat label="Seed status" value={text(training.seed_status ?? training.seedStatus, "unknown")} />
+            <MiniStat label="Risk input" value={text(trajectory.risk_input ?? trajectory.riskInput, "not_used_for_sizing")} />
           </div>
         </Panel>
       </div>

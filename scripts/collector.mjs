@@ -4,7 +4,9 @@ const bridgeBaseUrl = (process.env.BRIDGE_API_BASE_URL || "").replace(/\/+$/, ""
 const ingestUrl = process.env.NEXUS_INGEST_URL || "http://127.0.0.1:3000/api/ingest";
 const ingestKey = process.env.INGEST_API_KEY || "";
 const bridgeToken = process.env.BRIDGE_TOKEN || "";
+const bridgeDashboardPassword = process.env.BRIDGE_DASHBOARD_PASSWORD || process.env.APEX_DASHBOARD_PASSWORD || process.env.APP_ADMIN_PASSWORD || "";
 const intervalMs = Number(process.env.COLLECTOR_INTERVAL_MS || 15000);
+let bridgeCookie = "";
 
 if (!bridgeBaseUrl) {
   throw new Error("BRIDGE_API_BASE_URL is required");
@@ -21,6 +23,39 @@ async function fetchJson(path) {
     throw new Error(`Bridge ${path} failed with HTTP ${response.status}`);
   }
   return response.json();
+}
+
+async function fetchDashboardJson() {
+  let response = await fetch(`${bridgeBaseUrl}/dashboard/data`, {
+    headers: bridgeCookie ? { cookie: bridgeCookie } : {},
+  });
+  if (response.status === 401 && bridgeDashboardPassword) {
+    await loginDashboard();
+    response = await fetch(`${bridgeBaseUrl}/dashboard/data`, {
+      headers: bridgeCookie ? { cookie: bridgeCookie } : {},
+    });
+  }
+  if (!response.ok) {
+    throw new Error(`Bridge /dashboard/data failed with HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+async function loginDashboard() {
+  const response = await fetch(`${bridgeBaseUrl}/dashboard/login`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ password: bridgeDashboardPassword }).toString(),
+    redirect: "manual",
+  });
+  if (![200, 303, 307].includes(response.status)) {
+    throw new Error(`Bridge dashboard login failed with HTTP ${response.status}`);
+  }
+  const cookie = response.headers.get("set-cookie");
+  if (!cookie) {
+    throw new Error("Bridge dashboard login did not return a session cookie");
+  }
+  bridgeCookie = cookie.split(";")[0];
 }
 
 function record(value) {
@@ -67,6 +102,7 @@ function eventToIngest(event, observedAt) {
 function toIngest({ health, stats, dashboard }) {
   const observedAt = new Date().toISOString();
   const runtime = record(dashboard.runtime);
+  const summary = record(dashboard.summary);
   const account = record(dashboard.account);
   const control = record(dashboard.control_state || dashboard.operator_control);
   const pairs = array(dashboard.pairs || dashboard.symbols || dashboard.strategy_pool);
@@ -78,12 +114,12 @@ function toIngest({ health, stats, dashboard }) {
     bot: {
       observedAt,
       source: "bridge",
-      equity: numberFrom(stats.equity, stats.current_equity, dashboard.equity, account.equity, runtime.equity),
-      balance: numberFrom(stats.balance, dashboard.balance, account.balance),
-      pnlToday: numberFrom(stats.pnl_today, stats.daily_pnl, dashboard.pnl_today, runtime.pnl_today),
-      drawdownPct: numberFrom(stats.drawdown_pct, dashboard.drawdown_pct, runtime.drawdown_pct),
-      queueDepth: numberFrom(stats.queue_depth, runtime.queue_depth),
-      session: textFrom(stats.session, dashboard.session, runtime.session),
+      equity: numberFrom(stats.equity, stats.current_equity, dashboard.equity, summary.equity, account.equity, runtime.equity),
+      balance: numberFrom(stats.balance, dashboard.balance, summary.balance, account.balance),
+      pnlToday: numberFrom(stats.pnl_today, stats.daily_pnl, dashboard.pnl_today, summary.daily_pnl, summary.pnl_today, runtime.pnl_today),
+      drawdownPct: numberFrom(stats.drawdown_pct, dashboard.drawdown_pct, summary.drawdown_pct, runtime.drawdown_pct),
+      queueDepth: numberFrom(stats.queue_depth, dashboard.queue_depth, summary.queue_depth, runtime.queue_depth),
+      session: textFrom(stats.session, dashboard.session, summary.session, runtime.session),
       killState: textFrom(String(control.kill_switch ?? ""), dashboard.kill_state, health.status),
       openRiskPct: numberFrom(stats.open_risk_pct, dashboard.open_risk_pct, runtime.open_risk_pct),
       payload: {
@@ -97,6 +133,16 @@ function toIngest({ health, stats, dashboard }) {
         data_sources: record(stats.data_sources || dashboard.data_sources || dashboard.providers),
         market_context: record(stats.market_context || dashboard.market_context),
         learning: record(stats.learning || stats.self_evolution || dashboard.learning),
+        institutional_apex: record(dashboard.institutional_apex),
+        institutional_intelligence: record(dashboard.institutional_intelligence),
+        training_bootstrap_status: record(dashboard.training_bootstrap_status),
+        data_quality: record(dashboard.data_quality),
+        self_repair: record(dashboard.self_repair),
+        promotion_audit: record(dashboard.promotion_audit),
+        funded_mission: record(dashboard.funded_mission),
+        trajectory_forecast: record(dashboard.trajectory_forecast),
+        xau_btc_opportunity_pipeline: record(dashboard.xau_btc_opportunity_pipeline),
+        live_shadow_gap: record(dashboard.live_shadow_gap),
       },
     },
     symbols: pairs.map((pair) => ({
@@ -122,7 +168,7 @@ async function collectOnce() {
   const [health, stats, dashboard] = await Promise.all([
     fetchJson("/health").catch((error) => ({ status: "error", error: String(error.message || error) })),
     fetchJson("/stats").catch((error) => ({ status: "error", error: String(error.message || error) })),
-    fetchJson("/dashboard/data").catch((error) => ({ status: "error", error: String(error.message || error) })),
+    fetchDashboardJson().catch((error) => ({ status: "error", error: String(error.message || error) })),
   ]);
   const payload = toIngest({ health: record(health), stats: record(stats), dashboard: record(dashboard) });
   const response = await fetch(ingestUrl, {
