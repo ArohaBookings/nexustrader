@@ -14,7 +14,7 @@ for label in "com.apexbot.telegram" "com.apexbot.bridge"; do
   fi
 done
 
-for session in "${APEX_TELEGRAM_SCREEN_SESSION:-apex_telegram}" "${APEX_BRIDGE_SCREEN_SESSION:-apex_bridge}"; do
+for session in "${APEX_NEXUS_COLLECTOR_SCREEN_SESSION:-nexus_collector}" "${APEX_TELEGRAM_SCREEN_SESSION:-apex_telegram}" "${APEX_BRIDGE_SCREEN_SESSION:-apex_bridge}"; do
   if command -v screen >/dev/null 2>&1; then
     if screen -S "${session}" -X quit >/dev/null 2>&1; then
       echo "${session}: screen session stopped"
@@ -25,6 +25,9 @@ done
 
 pkill -f "scripts/apex_telegram_poll.py --claim-owner" >/dev/null 2>&1 || true
 pkill -f -- "-m src.main --bridge-only" >/dev/null 2>&1 || true
+pkill -f "nexus-trader/scripts/collector.mjs" >/dev/null 2>&1 || true
+pkill -f "node scripts/collector.mjs" >/dev/null 2>&1 || true
+pkill -f "npm run collector" >/dev/null 2>&1 || true
 
 wait_for_no_process() {
   local label="$1"
@@ -57,6 +60,8 @@ PY
 
 wait_for_no_process "APEX Telegram poller" "scripts/apex_telegram_poll.py --claim-owner"
 wait_for_no_process "APEX bridge" "-m src.main --bridge-only"
+wait_for_no_process "Nexus collector" "nexus-trader/scripts/collector.mjs"
+wait_for_no_process "Nexus collector node" "node scripts/collector.mjs"
 wait_for_bridge_down
 
 stop_pid_file() {
@@ -84,3 +89,4 @@ stop_pid_file() {
 
 stop_pid_file "APEX Telegram poller" "data/run/apex_telegram_poll.pid"
 stop_pid_file "APEX bridge" "data/run/apex_bridge.pid"
+stop_pid_file "Nexus collector" "data/run/nexus_collector.pid"

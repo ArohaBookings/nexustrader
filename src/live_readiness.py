@@ -333,6 +333,9 @@ def build_live_readiness_report(
     if bridge_feed_ok and latest_account:
         account_equity = _number(latest_account.get("equity"), 0.0)
         account_balance = _number(latest_account.get("balance"), 0.0)
+        bid = _number(latest_account.get("bid"), 0.0)
+        ask = _number(latest_account.get("ask"), 0.0)
+        last_price = _number(latest_account.get("last_price") or latest_account.get("last"), 0.0)
         checks.append(
             _check(
                 "bridge_account_equity",
@@ -348,6 +351,25 @@ def build_live_readiness_report(
                     "balance": account_balance,
                     "equity": account_equity,
                     "free_margin": _number(latest_account.get("free_margin"), 0.0),
+                    "updated_at": latest_account.get("updated_at"),
+                },
+            )
+        )
+        checks.append(
+            _check(
+                "bridge_broker_price_context",
+                (bid > 0.0 and ask > 0.0) or last_price > 0.0,
+                "Bridge is receiving live broker bid/ask/last price context"
+                if (bid > 0.0 and ask > 0.0) or last_price > 0.0
+                else "Bridge is polling MT5 but broker bid/ask/last price context is unavailable; live order SL/TP cannot be validated.",
+                hard=True,
+                details={
+                    "account": latest_account.get("account"),
+                    "symbol_key": latest_account.get("symbol_key"),
+                    "magic": latest_account.get("magic"),
+                    "bid": bid,
+                    "ask": ask,
+                    "last_price": last_price,
                     "updated_at": latest_account.get("updated_at"),
                 },
             )
@@ -425,6 +447,10 @@ def _next_actions_from_failures(hard_failures: Sequence[ReadinessCheck], warning
     if "bridge_account_equity" in names:
         actions.append(
             "Confirm the MT5 account is funded/logged in and that ApexBridgeEA reports non-zero ACCOUNT_BALANCE/ACCOUNT_EQUITY before allowing live sizing or funded-mode calculations."
+        )
+    if "bridge_broker_price_context" in names:
+        actions.append(
+            "Recompile and reattach mt5_bridge/ApexBridgeEA.mq5 so each /v1/pull includes live bid, ask, and last price fields before attempting a canary or live trade."
         )
     if "required_env" in names:
         missing_env: set[str] = set()

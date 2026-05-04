@@ -6455,6 +6455,129 @@ class BridgeCloseReportTests(unittest.TestCase):
                 assert close_action is not None
                 self.assertEqual(str(close_action.get("status") or "").upper(), "CLOSED")
 
+    def test_force_test_uses_mt5_snapshot_bid_ask_when_pull_has_no_price(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            queue = BridgeActionQueue(db_path=root / "bridge.sqlite", ttl_seconds=30)
+            journal = TradeJournal(root / "trades.sqlite")
+            online = OnlineLearningEngine(
+                data_path=root / "trades.csv",
+                model_path=root / "online_model.pkl",
+                min_retrain_trades=1,
+            )
+            with patch.dict(
+                os.environ,
+                {
+                    "APEX_FORCE_TEST_MODE": "1",
+                    "APEX_FORCE_TEST_SYMBOL": "BTCUSD",
+                    "APEX_FORCE_TEST_ACCOUNT": "SNAPBTC",
+                    "APEX_FORCE_TEST_MAGIC": "9091",
+                    "APEX_FORCE_TEST_TF": "M5",
+                    "APEX_FORCE_TEST_SIDE": "BUY",
+                    "APEX_FORCE_TEST_ONCE": "1",
+                    "APEX_FORCE_TEST_LIVE": "1",
+                },
+                clear=False,
+            ):
+                app = create_bridge_app(queue=queue, journal=journal, online_learning=online, auth_token="")
+                client = TestClient(app)
+                saturday = datetime(2026, 3, 7, 15, 0, tzinfo=timezone.utc)
+                with patch("src.bridge_server.utc_now", return_value=saturday):
+                    snapshot = client.post(
+                        "/v1/mt5_snapshot",
+                        json={
+                            "symbol": "BTCUSD",
+                            "account": "SNAPBTC",
+                            "magic": 9091,
+                            "timeframe": "M5",
+                            "balance": 64.06,
+                            "equity": 64.06,
+                            "free_margin": 61.25,
+                            "leverage": 500,
+                            "spread_points": 25,
+                            "bid": 68000.10,
+                            "ask": 68000.40,
+                            "point": 0.01,
+                            "digits": 2,
+                            "tick_size": 0.01,
+                            "tick_value": 1.0,
+                            "lot_min": 0.01,
+                            "lot_max": 10.0,
+                            "lot_step": 0.01,
+                            "contract_size": 1.0,
+                            "stops_level": 600,
+                            "freeze_level": 100,
+                        },
+                    )
+                    self.assertEqual(snapshot.status_code, 200)
+                    response = client.get(
+                        "/v1/pull",
+                        params={
+                            "symbol": "BTCUSD",
+                            "account": "SNAPBTC",
+                            "magic": 9091,
+                            "timeframe": "M5",
+                            "balance": 64.06,
+                            "equity": 64.06,
+                            "free_margin": 61.25,
+                            "spread_points": 25,
+                        },
+                    )
+            self.assertEqual(response.status_code, 200)
+            actions = response.json().get("actions", [])
+            self.assertEqual(len(actions), 1)
+            self.assertEqual(str(actions[0].get("action_type")), "OPEN_MARKET")
+            self.assertTrue(str(actions[0].get("signal_id") or "").startswith("FORCE_TEST::BTCUSD::M5::BUY::SNAPBTC::9091"))
+            self.assertGreater(float(actions[0].get("sl") or 0.0), 0.0)
+            self.assertGreater(float(actions[0].get("tp") or 0.0), 0.0)
+
+    def test_pull_derives_last_price_from_bid_ask_for_account_snapshot(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            queue = BridgeActionQueue(db_path=root / "bridge.sqlite", ttl_seconds=30)
+            journal = TradeJournal(root / "trades.sqlite")
+            online = OnlineLearningEngine(
+                data_path=root / "trades.csv",
+                model_path=root / "online_model.pkl",
+                min_retrain_trades=1,
+            )
+            app = create_bridge_app(queue=queue, journal=journal, online_learning=online, auth_token="")
+            client = TestClient(app)
+            saturday = datetime(2026, 3, 7, 15, 0, tzinfo=timezone.utc)
+            with patch("src.bridge_server.utc_now", return_value=saturday):
+                response = client.get(
+                    "/v1/pull",
+                    params={
+                        "symbol": "BTCUSD",
+                        "account": "PRICECTX",
+                        "magic": 9092,
+                        "timeframe": "M5",
+                        "balance": 64.06,
+                        "equity": 64.06,
+                        "free_margin": 61.25,
+                        "spread_points": 25,
+                        "bid": 68000.10,
+                        "ask": 68000.40,
+                        "point": 0.01,
+                        "digits": 2,
+                        "tick_size": 0.01,
+                        "tick_value": 1.0,
+                        "lot_min": 0.01,
+                        "lot_max": 10.0,
+                        "lot_step": 0.01,
+                        "contract_size": 1.0,
+                        "stops_level": 600,
+                        "freeze_level": 100,
+                    },
+                )
+            self.assertEqual(response.status_code, 200)
+            snapshot = queue.get_account_snapshot(account="PRICECTX", symbol="BTCUSD", magic=9092)
+            self.assertIsNotNone(snapshot)
+            assert snapshot is not None
+            self.assertAlmostEqual(float(snapshot.get("last_price") or 0.0), 68000.25)
+            self.assertAlmostEqual(float(snapshot.get("bid") or 0.0), 68000.10)
+            self.assertAlmostEqual(float(snapshot.get("ask") or 0.0), 68000.40)
+
     def test_duplicate_execution_report_is_idempotent(self) -> None:
         with TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

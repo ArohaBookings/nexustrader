@@ -8810,6 +8810,24 @@ def create_bridge_app(
             return
         if entry_hint <= 0:
             force_test_state["disabled_reason"] = "awaiting_entry_hint"
+            log_now = utc_now()
+            last_logged = force_test_state.get("awaiting_entry_hint_logged_at")
+            should_log = not isinstance(last_logged, datetime) or (log_now - last_logged).total_seconds() >= 30.0
+            if should_log:
+                force_test_state["awaiting_entry_hint_logged_at"] = log_now
+                _log(
+                    logger,
+                    "warning",
+                    log_names["disabled"],
+                    symbol=env_symbol,
+                    reason="awaiting_entry_hint",
+                    account=account_id,
+                    magic=magic,
+                    timeframe=timeframe_value,
+                    snapshot_bid=_safe_float((account_snapshot or {}).get("bid"), 0.0),
+                    snapshot_ask=_safe_float((account_snapshot or {}).get("ask"), 0.0),
+                    snapshot_last=_safe_float((account_snapshot or {}).get("last_price") or (account_snapshot or {}).get("last"), 0.0),
+                )
             return
         side = _env_first(("APEX_FORCE_TEST_TRADE_SIDE", "APEX_FORCE_TEST_SIDE"), default="BUY").upper()
         if side not in {"BUY", "SELL"}:
@@ -15520,10 +15538,17 @@ def create_bridge_app(
         timeframe_value = str(payload.get("timeframe") or payload.get("tf") or "M5").upper()
         symbol_key = _normalize_symbol_key(symbol)
         snapshot_key = f"{account}:{magic}:{symbol_key}"
+        snapshot_bid = _safe_float(payload.get("bid"), 0.0)
+        snapshot_ask = _safe_float(payload.get("ask"), 0.0)
+        snapshot_last = _safe_float(payload.get("last"), 0.0)
+        if snapshot_last <= 0.0 and snapshot_bid > 0.0 and snapshot_ask > 0.0:
+            snapshot_last = (snapshot_bid + snapshot_ask) * 0.5
+        elif snapshot_last <= 0.0:
+            snapshot_last = max(snapshot_bid, snapshot_ask, 0.0)
         data = {
-            "bid": _safe_float(payload.get("bid"), 0.0),
-            "ask": _safe_float(payload.get("ask"), 0.0),
-            "last_price": _safe_float(payload.get("last"), 0.0),
+            "bid": snapshot_bid,
+            "ask": snapshot_ask,
+            "last_price": snapshot_last,
             "spread_points": _safe_float(payload.get("spread_points"), 0.0),
             "open_count": payload.get("open_count"),
             "net_lots": payload.get("net_lots"),
@@ -15541,6 +15566,24 @@ def create_bridge_app(
             balance=payload.get("balance"),
             equity=payload.get("equity"),
             free_margin=payload.get("free_margin"),
+            extras={
+                "bid": snapshot_bid,
+                "ask": snapshot_ask,
+                "last": snapshot_last,
+                "last_price": snapshot_last,
+                "spread_points": payload.get("spread_points"),
+                "point": payload.get("point"),
+                "digits": payload.get("digits"),
+                "tick_size": payload.get("tick_size"),
+                "tick_value": payload.get("tick_value"),
+                "lot_min": payload.get("lot_min"),
+                "lot_max": payload.get("lot_max"),
+                "lot_step": payload.get("lot_step"),
+                "contract_size": payload.get("contract_size"),
+                "stops_level": payload.get("stops_level"),
+                "freeze_level": payload.get("freeze_level"),
+                "leverage": payload.get("leverage"),
+            },
         )
         state = queue.sync_reality_from_pull(
             account=account,
@@ -15620,6 +15663,13 @@ def create_bridge_app(
     ) -> dict[str, Any]:
         _require_local_internal_access(request)
         _check_auth(x_bridge_token)
+        pull_bid = _safe_float(bid, 0.0)
+        pull_ask = _safe_float(ask, 0.0)
+        pull_last_price = _safe_float(last, 0.0)
+        if pull_last_price <= 0.0 and pull_bid > 0.0 and pull_ask > 0.0:
+            pull_last_price = (pull_bid + pull_ask) * 0.5
+        elif pull_last_price <= 0.0:
+            pull_last_price = max(pull_bid, pull_ask, 0.0)
         queue.update_account_snapshot(
             account=account,
             symbol=symbol,
@@ -15632,9 +15682,10 @@ def create_bridge_app(
                 "margin_level": margin_level,
                 "leverage": leverage,
                 "spread_points": spread_points,
-                "bid": bid,
-                "ask": ask,
+                "bid": pull_bid,
+                "ask": pull_ask,
                 "last": last,
+                "last_price": pull_last_price,
                 "point": point,
                 "digits": digits,
                 "tick_size": tick_size,
@@ -15709,6 +15760,21 @@ def create_bridge_app(
             entry_hint = (float(bid) + float(ask)) * 0.5
         if entry_hint <= 0 and snapshot:
             entry_hint = float(snapshot.get("last_price") or 0.0)
+            snapshot_bid = _safe_float(snapshot.get("bid"), 0.0)
+            snapshot_ask = _safe_float(snapshot.get("ask"), 0.0)
+            if entry_hint <= 0 and snapshot_bid > 0.0 and snapshot_ask > 0.0:
+                entry_hint = (snapshot_bid + snapshot_ask) * 0.5
+            elif entry_hint <= 0:
+                entry_hint = max(snapshot_bid, snapshot_ask, 0.0)
+        if entry_hint <= 0 and account_snapshot:
+            snapshot_last = _safe_float(account_snapshot.get("last_price") or account_snapshot.get("last"), 0.0)
+            snapshot_bid = _safe_float(account_snapshot.get("bid"), 0.0)
+            snapshot_ask = _safe_float(account_snapshot.get("ask"), 0.0)
+            entry_hint = snapshot_last
+            if entry_hint <= 0 and snapshot_bid > 0.0 and snapshot_ask > 0.0:
+                entry_hint = (snapshot_bid + snapshot_ask) * 0.5
+            elif entry_hint <= 0:
+                entry_hint = max(snapshot_bid, snapshot_ask, 0.0)
         quote_truth = _update_market_quote_state(
             symbol_key=symbol_key,
             price=float(entry_hint),

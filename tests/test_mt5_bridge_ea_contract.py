@@ -21,6 +21,7 @@ def test_mt5_ea_pull_sends_execution_quality_context() -> None:
     source = (ROOT / "mt5_bridge" / "ApexBridgeEA.mq5").read_text(encoding="utf-8")
 
     for key in (
+        "last=%.10f",
         "spread_points=%.2f",
         "tick_size=%.10f",
         "tick_value=%.10f",
@@ -33,3 +34,10 @@ def test_mt5_ea_pull_sends_execution_quality_context() -> None:
         "symbol_trade_mode=%d",
     ):
         assert key in source
+
+
+def test_mt5_ea_derives_last_price_when_symbol_last_is_missing() -> None:
+    source = (ROOT / "mt5_bridge" / "ApexBridgeEA.mq5").read_text(encoding="utf-8")
+
+    assert "double last = SymbolInfoDouble(_Symbol, SYMBOL_LAST);" in source
+    assert "last = (bid + ask) * 0.5;" in source

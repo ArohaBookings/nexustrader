@@ -1213,6 +1213,11 @@ void PullAndExecute()
 {
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double last = SymbolInfoDouble(_Symbol, SYMBOL_LAST);
+   if(last <= 0.0 && bid > 0.0 && ask > 0.0)
+      last = (bid + ask) * 0.5;
+   else if(last <= 0.0)
+      last = MathMax(bid, ask);
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    if(point <= 0.0)
       point = 0.0001;
@@ -1235,7 +1240,7 @@ void PullAndExecute()
    long gmtTime = (long)TimeGMT();
    string endpoint = StringFormat(
       "/v1/pull?symbol=%s&account=%I64d&magic=%I64d&balance=%.2f&equity=%.2f&free_margin=%.2f"
-      + "&bid=%.10f&ask=%.10f&spread_points=%.2f&point=%.10f&digits=%d"
+      + "&bid=%.10f&ask=%.10f&last=%.10f&spread_points=%.2f&point=%.10f&digits=%d"
       + "&tick_size=%.10f&tick_value=%.10f&lot_min=%.4f&lot_max=%.4f&lot_step=%.4f&contract_size=%.4f"
       + "&stops_level=%d&freeze_level=%d&symbol_selected=%d&symbol_trade_mode=%d"
       + "&terminal_connected=%d&terminal_trade_allowed=%d&mql_trade_allowed=%d&server_time=%I64d&gmt_time=%I64d",
@@ -1247,6 +1252,7 @@ void PullAndExecute()
       AccountInfoDouble(ACCOUNT_MARGIN_FREE),
       bid,
       ask,
+      last,
       spreadPoints,
       point,
       digits,

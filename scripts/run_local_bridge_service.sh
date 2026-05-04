@@ -13,10 +13,15 @@ load_env_file() {
     [[ -z "${line}" || "${line}" == \#* || "${line}" != *=* ]] && continue
     key="${line%%=*}"
     value="${line#*=}"
+    if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
+      value="${value:1:${#value}-2}"
+    elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+      value="${value:1:${#value}-2}"
+    fi
     key="${key%"${key##*[![:space:]]}"}"
     key="${key#"${key%%[![:space:]]*}"}"
     [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
-    if [[ -z "${!key+x}" ]]; then
+    if [[ -z "${!key+x}" || -z "${!key:-}" ]]; then
       export "${key}=${value}"
     fi
   done < "${env_file}"

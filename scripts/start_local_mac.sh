@@ -13,10 +13,15 @@ load_env_file() {
     [[ -z "${line}" || "${line}" == \#* || "${line}" != *=* ]] && continue
     key="${line%%=*}"
     value="${line#*=}"
+    if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
+      value="${value:1:${#value}-2}"
+    elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+      value="${value:1:${#value}-2}"
+    fi
     key="${key%"${key##*[![:space:]]}"}"
     key="${key#"${key%%[![:space:]]*}"}"
     [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
-    if [[ -z "${!key+x}" ]]; then
+    if [[ -z "${!key+x}" || -z "${!key:-}" ]]; then
       export "${key}=${value}"
     fi
   done < "${env_file}"
@@ -67,6 +72,44 @@ telegram_poller_alive() {
     return 0
   fi
   pgrep -f "scripts/apex_telegram_poll.py --claim-owner" >/dev/null 2>&1
+}
+
+nexus_collector_alive() {
+  if screen_session_alive "${APEX_NEXUS_COLLECTOR_SCREEN_SESSION:-nexus_collector}"; then
+    return 0
+  fi
+  pgrep -f "nexus-trader/scripts/collector.mjs" >/dev/null 2>&1
+}
+
+nexus_collector_configured() {
+  [[ "${APEX_START_NEXUS_COLLECTOR:-true}" == "true" ]] || return 1
+  if [[ -n "${INGEST_API_KEY:-}" ]]; then
+    return 0
+  fi
+  for env_file in "nexus-trader/.env.production.local" "nexus-trader/.env.local"; do
+    if [[ -f "${env_file}" ]] && python3 - "${env_file}" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+for raw in path.read_text(errors="ignore").splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    if key.strip() != "INGEST_API_KEY":
+        continue
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    raise SystemExit(0 if bool(value.strip()) else 1)
+raise SystemExit(1)
+PY
+    then
+      return 0
+    fi
+  done
+  return 1
 }
 
 pid_alive() {
@@ -197,12 +240,43 @@ start_telegram_poll() {
   fi
 }
 
+start_nexus_collector() {
+  local collector_pid="data/run/nexus_collector.pid"
+  local collector_screen="${APEX_NEXUS_COLLECTOR_SCREEN_SESSION:-nexus_collector}"
+  if ! nexus_collector_configured; then
+    echo "Nexus collector skipped: INGEST_API_KEY not configured locally."
+    return 0
+  fi
+  if nexus_collector_alive; then
+    echo "Nexus collector already running"
+    return 0
+  fi
+  if pid_alive "${collector_pid}"; then
+    echo "Nexus collector already running: $(cat "${collector_pid}")"
+    return 0
+  fi
+  if command -v screen >/dev/null 2>&1 && [[ "${APEX_LOCAL_START_METHOD:-screen}" == "screen" ]]; then
+    screen -L -dmS "${collector_screen}" "$(pwd -P)/scripts/run_nexus_collector_service.sh"
+    rm -f "${collector_pid}"
+    echo "Started Nexus collector screen session ${collector_screen}"
+    if ! wait_for_screen_session "${collector_screen}" 10 1 && ! nexus_collector_alive; then
+      tail_log_on_failure "Nexus collector" "logs/nexus_collector.log"
+      echo "Nexus collector is optional telemetry; bridge and Telegram startup will continue."
+    fi
+  else
+    nohup env PYTHONPATH=. "$(pwd -P)/scripts/run_nexus_collector_service.sh" >> logs/nexus_collector.log 2>&1 &
+    echo $! > "${collector_pid}"
+    echo "Started Nexus collector pid $(cat "${collector_pid}")"
+  fi
+}
+
 start_bridge
 start_telegram_poll
+start_nexus_collector
 
 echo "Local Mac APEX services started."
 echo "Bridge: http://127.0.0.1:8000/health"
-echo "Logs: logs/local_bridge.log and logs/telegram_poll.log"
+echo "Logs: logs/local_bridge.log, logs/telegram_poll.log, and logs/nexus_collector.log"
 if [[ -z "${TELEGRAM_CHAT_ID:-}" ]]; then
   echo "Send /start to Nexus_vantage_trader_bot; the poller will claim TELEGRAM_CHAT_ID automatically."
 fi
